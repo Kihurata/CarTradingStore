@@ -1,0 +1,79 @@
+
+
+services:
+  database:
+    container_name: car-trading-db
+    image: postgres:15
+    restart: always
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./backend/config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - cartradingstore
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: car-trading-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_HOST: database
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "4000:4000"
+    depends_on:
+      - database
+    networks:
+      - cartradingstore
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: car-trading-frontend
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - cartradingstore
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: car-trading-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@mail.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin123"
+    ports:
+      - "16543:80"
+    depends_on:
+      - database
+    networks:
+      - cartradingstore
+
+networks:
+  cartradingstore:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
