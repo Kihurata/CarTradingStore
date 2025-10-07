@@ -14,10 +14,10 @@ RUN npm install
 COPY . .
 
 # Thiết lập biến môi trường (nếu cần)
-ENV PORT=4000
+ENV PORT=3000
 
 # Mở cổng ứng dụng
-EXPOSE 4000
+EXPOSE 3000
 
 # Lệnh để chạy ứng dụng
 CMD ["npm", "start"]
