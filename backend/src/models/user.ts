@@ -1,13 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
 
 export enum UserStatus {
   ACTIVE = 'active',
   LOCKED = 'locked',
-  INACTIVE = 'inactive'
+  INACTIVE = 'inactive',
 }
 
 export interface User {
-  id: string;  // UUID
+  id: string;
   email: string;
   password_hash: string;
   name?: string;
@@ -19,9 +18,11 @@ export interface User {
   updated_at: Date;
 }
 
-export const createUser = (partial: Omit<User, 'id' | 'created_at' | 'updated_at'>): User => ({
-  id: uuidv4(),
-  ...partial,
+export const createUser = (userData: Partial<User>): User => ({
+  id: require('uuid').v4(),
+  ...userData,
+  is_admin: false,
+  status: UserStatus.ACTIVE,
   created_at: new Date(),
   updated_at: new Date(),
-});
+} as User);

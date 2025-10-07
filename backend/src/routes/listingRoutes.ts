@@ -1,32 +1,36 @@
 import { Router } from 'express';
-import * as listingController from '../controllers/listingController'; 
 import { authenticateToken, requireAdmin } from '../middleware/auth';
-import multer from 'multer'; 
+import * as listingController from '../controllers/listingController';
 
-const upload = multer({ dest: 'uploads/' }); 
 const router = Router();
 
-router.get('/', listingController.getAllListings);
-router.get('/:id', listingController.getListing);
+// GET /api/listings
+router.get('/', authenticateToken, listingController.getAllListings);
 
-// Protected
-router.post('/', authenticateToken, upload.array('images', 5), listingController.createListing);  
-router.patch('/:id/approve', authenticateToken, requireAdmin, listingController.approveListing);
+// GET /api/listings/:id
+router.get('/:id', authenticateToken, listingController.getListing);
+
+// POST /api/listings
+router.post('/', authenticateToken, listingController.createListing);
+
+// PUT /api/listings/:id (edit)
+router.put('/:id', authenticateToken, listingController.editListing);  
+// PATCH /api/listings/:id/status (approve)
+router.patch('/:id/status', authenticateToken, requireAdmin, listingController.approveListing);
+
+// DELETE /api/listings/:id
 router.delete('/:id', authenticateToken, requireAdmin, listingController.deleteListing);
 
-// UC4.2 A1: Thêm yêu thích
-router.post('/:id/favorite', authenticateToken, listingController.addFavorite);
+// GET /api/listings/user
+router.get('/user', authenticateToken, listingController.getUserListings);
 
-// UC4.2 A2: So sánh
-router.post('/comparisons', authenticateToken, listingController.addComparison);
+// POST /api/listings/favorite
+router.post('/favorite', authenticateToken, listingController.addFavorite);
 
-// UC4.3: Báo cáo
-router.post('/:id/report', authenticateToken, listingController.reportViolation);
+// POST /api/listings/comparison
+router.post('/comparison', authenticateToken, listingController.addComparison);
 
-// UC5.1: Quản lý bài đăng của user
-router.get('/mine', authenticateToken, listingController.getUserListings);
-
-// UC5.2: Chỉnh sửa bài đăng
-router.put('/:id', authenticateToken, listingController.editListing);
+// POST /api/listings/report
+router.post('/report', authenticateToken, listingController.reportViolation);
 
 export default router;

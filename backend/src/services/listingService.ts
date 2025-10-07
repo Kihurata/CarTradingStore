@@ -1,222 +1,112 @@
 import pool from '../config/database';
-import { Listing, ListingStatus, createListing as prepareListing } from '../models/listing';  
-import { AuditLog, ReportType } from '../models/other';
 import { logAudit } from './auditService';
+import { ListingStatus } from '../models/listing';
 
-export const getAllListings = async (status?: ListingStatus): Promise<Listing[]> => {
-  try {
-    const query = status 
-      ? 'SELECT * FROM listings WHERE status = $1 ORDER BY created_at DESC' 
-      : 'SELECT * FROM listings ORDER BY created_at DESC';
-    const values = status ? [status] : [];
-    const result = await pool.query(query, values);
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching listings:', error);
-    throw new Error('Database query failed');
+
+export async function getAllListings(status?: string, page: number = 1, limit: number = 10) {
+  const offset = (page - 1) * limit;
+  const query = `SELECT * FROM listings WHERE ($1::listing_status IS NULL OR status = $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+  const { rows } = await pool.query(query, [status, limit, offset]);
+  return rows;
+}
+
+export async function getListingById(id: string) {
+  const { rows } = await pool.query('SELECT * FROM listings WHERE id = $1', [id]);
+  if (rows.length > 0) {
+    await logAudit('system', 'listing.view', 'listing', id);
   }
-};
+  return rows[0];
+}
 
-export const getListingById = async (id: string): Promise<Listing | null> => {
-  try {
-    const result = await pool.query('SELECT * FROM listings WHERE id = $1', [id]);
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error fetching listing:', error);
-    throw new Error('Database query failed');
-  }
-};
+export async function createListing(sellerId: string, listingData: any) {
+  const values = [
+    sellerId,
+    listingData.title,
+    listingData.price_vnd,
+    listingData.brand,
+    listingData.model,
+    listingData.year,
+    listingData.mileage_km || null,
+    listingData.gearbox || null,
+    listingData.fuel || null,
+    listingData.body_type || null,
+    listingData.seats || null,
+    listingData.color_ext || null,
+    listingData.color_int || null,
+    listingData.location_text || null,
+    listingData.description || null
+  ];
+  const placeholders = values.map((_, i) => `$${i + 2}`).join(', ');
+  const query = `INSERT INTO listings (seller_id, title, price_vnd, brand, model, year, mileage_km, gearbox, fuel, body_type, seats, color_ext, color_int, location_text, description) VALUES ($1, ${placeholders}) RETURNING *`;
+  const { rows: [newListing] } = await pool.query(query, values);
+  await logAudit(sellerId, 'listing.create', 'listing', newListing.id);
+  return newListing;
+}
 
-export const createListing = async (listingData: Omit<Listing, 'id' | 'created_at' | 'updated_at' | 'views_count' | 'edits_count' | 'reports_count'>): Promise<Listing> => {
-  try {
-    const newListing = prepareListing(listingData); 
-    const result = await pool.query(
-      `INSERT INTO listings (
-        id, seller_id, title, price_vnd, brand, model, year, mileage_km, gearbox, fuel, 
-        body_type, seats, color_ext, color_int, location_text, description, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
-      [
-        newListing.id, newListing.seller_id, newListing.title, newListing.price_vnd, newListing.brand,
-        newListing.model, newListing.year, newListing.mileage_km || null, newListing.gearbox || null, newListing.fuel || null,
-        newListing.body_type || null, newListing.seats || null, newListing.color_ext || null, newListing.color_int || null,
-        newListing.location_text || null, newListing.description || null, newListing.status
-      ]
-    );
-    
-    await logAudit({ actor_id: newListing.seller_id, action: 'listing.create', target_type: 'listing', target_id: newListing.id });
-    
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error creating listing:', error);
-    throw new Error('Failed to create listing');
-  }
-};
+export async function updateListingStatus(id: string, status: ListingStatus, approver_id?: string) {
+  await pool.query(
+    'UPDATE listings SET status = $1, approved_at = NOW(), approved_by = $2 WHERE id = $3',
+    [status, approver_id, id]
+  );
+  await logAudit(approver_id || 'system', 'listing.status.change', 'listing', id, { new_status: status });
+  return { success: true };
+}
 
-export const updateListingStatus = async (id: string, status: ListingStatus, approver_id?: string): Promise<Listing | null> => {
-  try {
-    const updateQuery = approver_id 
-      ? 'UPDATE listings SET status = $1, approved_at = NOW(), approved_by = $2 WHERE id = $3 RETURNING *'
-      : 'UPDATE listings SET status = $1 WHERE id = $2 RETURNING *';
-    const values = approver_id ? [status, approver_id, id] : [status, id];
-    const result = await pool.query(updateQuery, values);
-    
-    if (result.rows[0]) {
-      await logAudit({ actor_id: approver_id || 'system', action: `listing.status.change`, target_type: 'listing', target_id: id, metadata: { new_status: status } });
-    }
-    
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error updating listing status:', error);
-    throw new Error('Failed to update listing status');
-  }
-};
+export async function deleteListing(id: string) {
+  await pool.query('DELETE FROM listings WHERE id = $1', [id]);
+  await logAudit('system', 'listing.delete', 'listing', id);
+  return { success: true };
+}
 
-export const deleteListing = async (id: string): Promise<void> => {
-  try {
-    await pool.query('DELETE FROM listings WHERE id = $1', [id]);
-    await logAudit({ actor_id: 'system', action: 'listing.delete', target_type: 'listing', target_id: id });
-  } catch (error) {
-    console.error('Error deleting listing:', error);
-    throw new Error('Failed to delete listing');
-  }
-};
+export async function updateListing(id: string, updates: any, userId: string) {
+  const setClause = Object.keys(updates).map((k, i) => `${k} = $${i+1}`).join(', ');
+  const values = [...Object.values(updates), id];
+  const query = `UPDATE listings SET ${setClause}, updated_at = NOW() WHERE id = $${Object.keys(updates).length + 1} RETURNING *`;
+  const { rows: [updated] } = await pool.query(query, values);
+  await logAudit(userId, 'listing.update', 'listing', id, { changes: updates });
+  return updated;
+}
 
-// UC5.1: Quản lý bài đăng của user
-export const getUserListings = async (userId: string): Promise<Listing[]> => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM listings WHERE seller_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    return result.rows;
-  } catch (error) {
-    console.error('Error fetching user listings:', error);
-    throw new Error('Database query failed');
-  }
-};
+export async function getAllListingsAdmin() {
+  const { rows } = await pool.query('SELECT * FROM listings ORDER BY created_at DESC');
+  await logAudit('system', 'listing.list', 'listing', undefined);  // Fix: undefined instead of null
+  return rows;
+}
 
-// UC5.2: Chỉnh sửa bài đăng
-export const updateListing = async (
-  listingId: string,
-  updateData: Partial<Omit<Listing, 'id' | 'seller_id' | 'status' | 'created_at' | 'updated_at' | 'views_count' | 'edits_count' | 'reports_count'>>,
-  userId: string
-): Promise<Listing | null> => {
-  try {
-    const setClauses: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
+export async function getUserListings(userId: string, page: number = 1, limit: number = 10) {
+  const offset = (page - 1) * limit;
+  const { rows } = await pool.query(
+    'SELECT * FROM listings WHERE seller_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+    [userId, limit, offset]
+  );
+  return rows;
+}
 
-    const updatableFields = [
-      'title', 'price_vnd', 'brand', 'model', 'year', 'mileage_km', 'gearbox', 'fuel',
-      'body_type', 'seats', 'color_ext', 'color_int', 'location_text', 'description'
-    ];
+export async function addFavorite(userId: string, listingId: string) {
+  const { rows } = await pool.query(
+    'INSERT INTO favorites (user_id, listing_id) VALUES ($1, $2) RETURNING *',
+    [userId, listingId]
+  );
+  await logAudit(userId, 'favorite.add', 'listing', listingId);
+  return rows[0];
+}
 
-    updatableFields.forEach(field => {
-      if (updateData.hasOwnProperty(field)) {
-        setClauses.push(`${field} = $${paramIndex}`);
-        values.push(updateData[field as keyof typeof updateData]);
-        paramIndex++;
-      }
-    });
+export async function addComparison(userId: string, leftListingId: string, rightListingId: string) {
+  const id = require('uuid').v4();
+  const { rows } = await pool.query(
+    'INSERT INTO comparisons (id, user_id, left_listing_id, right_listing_id) VALUES ($1, $2, $3, $4) RETURNING *',
+    [id, userId, leftListingId, rightListingId]
+  );
+  await logAudit(userId, 'comparison.add', 'comparison', id, { left: leftListingId, right: rightListingId });
+  return rows[0];
+}
 
-    if (setClauses.length === 0) {
-      throw new Error('No valid fields to update');
-    }
+export async function reportViolation(listingId: string, reporterId: string, type: string, note?: string) {
+  const { rows: [newReport] } = await pool.query(
+    'INSERT INTO reports (listing_id, reporter_id, type, note) VALUES ($1, $2, $3, $4) RETURNING *',
+    [listingId, reporterId, type, note]
+  );
+  await logAudit(reporterId, 'report.create', 'listing', listingId, { type, note });
+  return newReport;
+}
 
-    setClauses.push('updated_at = NOW()');
-    setClauses.push('edits_count = edits_count + 1');
-
-    const query = `
-      UPDATE listings 
-      SET ${setClauses.join(', ')} 
-      WHERE id = $${paramIndex} AND seller_id = $${paramIndex + 1} 
-      RETURNING *
-    `;
-    values.push(listingId, userId);
-
-    const result = await pool.query(query, values);
-
-    if (result.rows[0]) {
-      await logAudit({
-        actor_id: userId,
-        action: 'listing.update',
-        target_type: 'listing',
-        target_id: listingId,
-        metadata: { updated_fields: Object.keys(updateData) }
-      });
-    }
-
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error updating listing:', error);
-    throw new Error('Failed to update listing');
-  }
-};
-
-// UC4.2 A1: Thêm yêu thích
-export const addFavorite = async (userId: string, listingId: string): Promise<void> => {
-  try {
-    await pool.query(
-      `INSERT INTO favorites (id, user_id, listing_id) 
-       VALUES (gen_random_uuid(), $1, $2) 
-       ON CONFLICT (user_id, listing_id) DO NOTHING`,
-      [userId, listingId]
-    );
-
-    await logAudit({
-      actor_id: userId,
-      action: 'favorite.add',
-      target_type: 'listing',
-      target_id: listingId
-    });
-  } catch (error) {
-    console.error('Error adding favorite:', error);
-    throw new Error('Failed to add favorite');
-  }
-};
-
-// UC4.2 A2: So sánh bài đăng
-export const addComparison = async (
-  userId: string,
-  leftListingId: string,
-  rightListingId: string
-): Promise<any> => {  // Simplified return for now
-  try {
-    const result = await pool.query(
-      `INSERT INTO comparisons (id, user_id, left_listing_id, right_listing_id) 
-       VALUES (gen_random_uuid(), $1, $2, $3) 
-       RETURNING *`,
-      [userId, leftListingId, rightListingId]
-    );
-
-    if (result.rows[0]) {
-      await logAudit({
-        actor_id: userId,
-        action: 'comparison.add',
-        target_type: 'comparison',
-        target_id: result.rows[0].id,
-        metadata: { left_listing_id: leftListingId, right_listing_id: rightListingId }
-      });
-    }
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error adding comparison:', error);
-    throw new Error('Failed to add comparison');
-  }
-};
-
-// UC4.3: Báo cáo vi phạm
-export const reportViolation = async (listingId: string, reporterId: string, type: ReportType, note?: string): Promise<any> => {
-  try {
-    const result = await pool.query(
-      'INSERT INTO reports (id, listing_id, reporter_id, type, note) VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *',
-      [listingId, reporterId, type, note || null]
-    );
-    await logAudit({ actor_id: reporterId, action: 'report.create', target_type: 'listing', target_id: listingId, metadata: { type, note } });
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error reporting violation:', error);
-    throw new Error('Failed to report violation');
-  }
-};
