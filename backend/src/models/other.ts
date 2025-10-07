@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { ListingStatus } from './listing';
+import { ListingStatus, Listing } from './listing';
 
 export enum ReportType {
   SEEDING = 'seeding',
@@ -38,6 +38,8 @@ export interface Comparison {
   left_listing_id: string;
   right_listing_id: string;
   created_at: Date;
+  left_listing?: Listing; 
+  right_listing?: Listing;  
 }
 
 export interface Report {
