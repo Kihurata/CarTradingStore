@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/userService';
 import { UserStatus } from '../models/user'; 
+import { authenticateToken } from '../middleware/auth';  // Import middleware
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -49,3 +50,18 @@ export const deleteUser = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete user' });
   }
 };
+
+// Thêm getMe
+export const getMe = [
+  authenticateToken,
+  async (req: Request & { user?: { id: string; is_admin: boolean } }, res: Response) => {
+    try {
+      const user = await userService.getUserById(req.user!.id);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      const { password_hash, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch user' });
+    }
+  }
+];

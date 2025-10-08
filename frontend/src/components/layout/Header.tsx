@@ -1,80 +1,75 @@
-// src/components/layout/Header.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, FormEvent } from "react";
-import { Heart, LogIn, UserPlus } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Heart } from "lucide-react";
+import { AuthModal } from "../auth/AuthModal";
 
 export function Header() {
-  const [q, setQ] = useState("");
-  const router = useRouter();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [userName, setUserName] = useState<string>("");
 
-  const onSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const p = new URLSearchParams();
-    if (q.trim()) p.set("q", q.trim());
-    router.push(`/listings?${p.toString()}`);
+  const handleAuthClick = (tab: "login" | "register") => {
+    setAuthTab(tab);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (name: string) => {
+    setUserName(name);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUserName("");
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 h-14 grid grid-cols-12 gap-3 items-center">
-        {/* Logo */}
-        <div className="col-span-3 sm:col-span-2">
-          <Link href="/" className="inline-flex items-center gap-1 font-bold text-blue-600">
-            <span className="text-2xl leading-none">oto</span>
-            <span className="text-gray-900 text-xl leading-none">.com</span>
+    <>
+      <header className="sticky top-0 z-50 bg-white border-b">
+        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-baseline gap-0.5">
+            <span className="text-[28px] font-bold text-[#0066CC] leading-none">oto</span>
+            <span className="text-[20px] font-medium text-gray-700 leading-none">.com.vn</span>
           </Link>
+
+          <div className="flex items-center gap-6">
+            <Link
+              href="/favorites"
+              className="flex items-center justify-center w-9 h-9 hover:bg-gray-50 rounded-full transition-colors"
+              aria-label="Yêu thích"
+            >
+              <Heart className="h-5 w-5 text-gray-600" />
+            </Link>
+
+            {userName ? (
+              <div className="flex items-center gap-3">
+                <span className="text-[15px] text-gray-700">{userName}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-[13px] text-gray-500 hover:text-gray-700"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleAuthClick("login")}
+                className="text-[15px] text-gray-700 hover:text-gray-900 whitespace-nowrap"
+              >
+                Đăng Nhập / Đăng ký
+              </button>
+            )}
+          </div>
         </div>
+      </header>
 
-        {/* Search */}
-        <form onSubmit={onSearch} className="col-span-6 sm:col-span-7">
-          <Input
-            placeholder="Tìm: hãng, mẫu xe, từ khóa…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            aria-label="Tìm kiếm xe"
-          />
-        </form>
-
-        {/* Actions: wishlist + auth */}
-        <div className="col-span-3 sm:col-span-3 flex items-center justify-end gap-2">
-          <Link href="/favorites" aria-label="Yêu thích" className="inline-flex">
-            <Button variant="outline" size="icon">
-              <Heart className="h-4 w-4" />
-            </Button>
-          </Link>
-
-          <Link href="/login" className="hidden sm:inline-flex">
-            <Button variant="outline" size="sm" className="gap-1">
-              <LogIn className="h-4 w-4" />
-              Đăng nhập
-            </Button>
-          </Link>
-
-          <Link href="/register" className="hidden sm:inline-flex">
-            <Button variant="outline" size="sm" className="gap-1">
-              <UserPlus className="h-4 w-4" />
-              Đăng ký
-            </Button>
-          </Link>
-
-          {/* Mobile: chỉ hiện 2 icon auth */}
-          <Link href="/login" className="sm:hidden inline-flex">
-            <Button variant="outline" size="icon" aria-label="Đăng nhập">
-              <LogIn className="h-4 w-4" />
-            </Button>
-          </Link>
-          <Link href="/register" className="sm:hidden inline-flex">
-            <Button size="icon" aria-label="Đăng ký">
-              <UserPlus className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </header>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        defaultTab={authTab}
+        onAuthSuccess={handleAuthSuccess}
+      />
+    </>
   );
 }

@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data
-      - ./backend/src/config/init.sql:/docker-entrypoint-initdb.d/01-init.sql  
+      - ./backend/src/config/init.sql:/docker-entrypoint-initdb.d/01-init.sql
     networks:
       - cartradingstore
     healthcheck:
@@ -37,6 +37,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: password123
       PORT: 4000
+      JWT_SECRET: your_super_secret_jwt_key_here
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
@@ -44,7 +45,7 @@ services:
       - "4000:4000"
     depends_on:
       database:
-        condition: service_healthy  
+        condition: service_healthy
     networks:
       - cartradingstore
 
@@ -56,6 +57,8 @@ services:
     restart: unless-stopped
     env_file:
       - ./frontend/.env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules

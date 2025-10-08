@@ -8,6 +8,9 @@ const router = Router();
 router.get('/', authenticateToken, listingController.getAllListings);
 
 // GET /api/listings/:id
+router.get('/', listingController.getAllListings);
+router.get('/:id', listingController.getListing);
+router.get('/user/:userId', listingController.getUserListings);
 router.get('/:id', authenticateToken, listingController.getListing);
 
 // POST /api/listings
@@ -33,4 +36,8 @@ router.post('/comparison', authenticateToken, listingController.addComparison);
 // POST /api/listings/report
 router.post('/report', authenticateToken, listingController.reportViolation);
 
+
+router.post('/:id/favorite', authenticateToken, listingController.addFavorite);
+router.post('/:id/comparison', authenticateToken, listingController.addComparison);
+router.post('/:id/report', authenticateToken, listingController.reportViolation);
 export default router;

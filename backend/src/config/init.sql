@@ -6,6 +6,7 @@
 -- 0) Extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;           -- gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";        -- (tuỳ chọn) uuid_generate_v4()
+CREATE EXTENSION IF NOT EXISTS citext;             -- cho CITEXT (case-insensitive email)
 
 -- 1) ENUM types
 DO $$
@@ -37,7 +38,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 3) USERS
--- Người dùng có thể vừa mua vừa bán; chỉ cần cờ is_admin để phân quyền quản trị.
 CREATE TABLE IF NOT EXISTS users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email           CITEXT UNIQUE NOT NULL,
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE INDEX IF NOT EXISTS idx_reports_listing ON reports(listing_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
--- (Tuỳ chọn) trigger cộng dồn reports_count vào listings để xem nhanh
+-- Trigger cộng dồn reports_count
 CREATE OR REPLACE FUNCTION bump_reports_count()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -161,25 +161,24 @@ CREATE TRIGGER trg_reports_counter_del
 AFTER DELETE ON reports
 FOR EACH ROW EXECUTE FUNCTION bump_reports_count();
 
--- 9) AUDIT LOGS (theo dõi hoạt động: chỉnh sửa bài, đổi trạng thái, duyệt, khoá user…)
+-- 9) AUDIT LOGS
 CREATE TABLE IF NOT EXISTS audit_logs (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id     UUID REFERENCES users(id) ON DELETE SET NULL,
-  action       TEXT NOT NULL,          -- ví dụ: listing.update, listing.status.change, report.review, user.lock
-  target_type  TEXT NOT NULL,          -- listing | report | user | image ...
-  target_id    UUID,                   -- id của bản ghi liên quan
-  metadata     JSONB,                  -- chi tiết thay đổi (diff, lý do, v.v.)
+  action       TEXT NOT NULL,
+  target_type  TEXT NOT NULL,
+  target_id    UUID,
+  metadata     JSONB,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs(target_type, target_id);
 CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_id);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
 
--- (Tuỳ chọn) tăng edits_count mỗi khi bài bị UPDATE nội dung (không tính chỉ đổi updated_at)
+-- Tăng edits_count
 CREATE OR REPLACE FUNCTION inc_edits_count()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- nếu thay đổi các cột nội dung chính thì +1
   IF NEW.title IS DISTINCT FROM OLD.title
      OR NEW.price_vnd IS DISTINCT FROM OLD.price_vnd
      OR NEW.description IS DISTINCT FROM OLD.description
@@ -203,13 +202,9 @@ CREATE TRIGGER trg_listings_editcount
 BEFORE UPDATE ON listings
 FOR EACH ROW EXECUTE FUNCTION inc_edits_count();
 
--- 10) QUẢN TRỊ NGƯỜI DÙNG
--- Khoá/mở khoá: cập nhật users.status = 'locked'/'active'.
--- Bật/tắt trạng thái hoạt động lâu ngày: dùng users.status='inactive' hoặc xử lý business riêng.
-
--- 11) Chỉ mục phục vụ thống kê nhanh theo ngày/tháng/năm
-CREATE INDEX IF NOT EXISTS idx_listings_created_day ON listings (DATE(created_at));
-CREATE INDEX IF NOT EXISTS idx_reports_created_day ON reports (DATE(created_at));
-CREATE INDEX IF NOT EXISTS idx_audit_created_day   ON audit_logs (DATE(created_at));
+-- 11) Chỉ mục thống kê (comment tạm dev để tránh IMMUTABLE error, thêm sau nếu cần)
+-- CREATE INDEX IF NOT EXISTS idx_listings_created_day ON listings ((created_at::date));
+-- CREATE INDEX IF NOT EXISTS idx_reports_created_day ON reports ((created_at::date));
+-- CREATE INDEX IF NOT EXISTS idx_audit_created_day ON audit_logs ((created_at::date));
 
 -- Kết thúc init.sql
