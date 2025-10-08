@@ -1,16 +1,36 @@
 import { Router } from 'express';
-import * as listingController from '../controllers/listingController'; 
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import * as listingController from '../controllers/listingController';
 
 const router = Router();
 
-// Public
-router.get('/', listingController.getAllListings);
-router.get('/:id', listingController.getListing);
+// GET /api/listings
+router.get('/', authenticateToken, listingController.getAllListings);
 
-// Protected
+// GET /api/listings/:id
+router.get('/:id', authenticateToken, listingController.getListing);
+
+// POST /api/listings
 router.post('/', authenticateToken, listingController.createListing);
-router.patch('/:id/approve', authenticateToken, requireAdmin, listingController.approveListing);
+
+// PUT /api/listings/:id (edit)
+router.put('/:id', authenticateToken, listingController.editListing);  
+// PATCH /api/listings/:id/status (approve)
+router.patch('/:id/status', authenticateToken, requireAdmin, listingController.approveListing);
+
+// DELETE /api/listings/:id
 router.delete('/:id', authenticateToken, requireAdmin, listingController.deleteListing);
+
+// GET /api/listings/user
+router.get('/user', authenticateToken, listingController.getUserListings);
+
+// POST /api/listings/favorite
+router.post('/favorite', authenticateToken, listingController.addFavorite);
+
+// POST /api/listings/comparison
+router.post('/comparison', authenticateToken, listingController.addComparison);
+
+// POST /api/listings/report
+router.post('/report', authenticateToken, listingController.reportViolation);
 
 export default router;

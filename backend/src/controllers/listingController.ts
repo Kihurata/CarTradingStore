@@ -2,57 +2,112 @@ import { Request, Response } from 'express';
 import * as listingService from '../services/listingService';
 import { ListingStatus } from '../models/listing';
 
-// Extend Request type để thêm user từ middleware auth
-interface AuthRequest extends Request {
-  user?: { id: string; is_admin: boolean };
-}
-
 export const getAllListings = async (req: Request, res: Response) => {
   try {
-    const status = req.query.status as ListingStatus;
-    const listings = await listingService.getAllListings(status);
-    res.json(listings);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch listings' });
+    const { status, page = '1', limit = '10' } = req.query;
+    const listings = await listingService.getAllListings(status as string, parseInt(page as string), parseInt(limit as string));
+    res.json({ data: listings });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
   }
 };
 
 export const getListing = async (req: Request, res: Response) => {
   try {
-    const listing = await listingService.getListingById(req.params.id);
+    const { id } = req.params;
+    const listing = await listingService.getListingById(id);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
-    res.json(listing);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch listing' });
+    res.json({ data: listing });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
   }
 };
 
 export const createListing = async (req: Request, res: Response) => {
   try {
-    const listingData = { ...req.body, seller_id: req.body.seller_id };  // Từ req.user nếu auth
-    const listing = await listingService.createListing(listingData);
-    res.status(201).json(listing);
-  } catch (error) {
-    res.status(400).json({ error: 'Failed to create listing' });
+    const sellerId = (req.user as any).id;
+    const listingData = req.body;
+    const listing = await listingService.createListing(sellerId, listingData);
+    res.status(201).json({ data: listing });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
   }
 };
 
-export const approveListing = async (req: AuthRequest, res: Response) => {  
+export const approveListing = async (req: Request, res: Response) => {
   try {
-    const approver_id = req.user?.id;  
-    const listing = await listingService.updateListingStatus(req.params.id, ListingStatus.APPROVED, approver_id);
-    if (!listing) return res.status(404).json({ error: 'Listing not found' });
-    res.json(listing);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to approve listing' });
+    const { id } = req.params;
+    const approver_id = (req.user as any).id;
+    const listing = await listingService.updateListingStatus(id, ListingStatus.APPROVED, approver_id);
+    res.json({ data: listing });
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
+  }
+};
+
+export const getUserListings = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { page = '1', limit = '10' } = req.query;
+    const listings = await listingService.getUserListings(userId, parseInt(page as string), parseInt(limit as string));
+    res.json({ data: listings });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+};
+
+export const addFavorite = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { listingId } = req.body;
+    const favorite = await listingService.addFavorite(userId, listingId);
+    res.status(201).json({ data: favorite });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+};
+
+export const addComparison = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any).id;
+    const { left_listing_id, right_listing_id } = req.body;
+    const comparison = await listingService.addComparison(userId, left_listing_id, right_listing_id);
+    res.status(201).json({ data: comparison });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+};
+
+export const reportViolation = async (req: Request, res: Response) => {
+  try {
+    const { listingId, type, note } = req.body;
+    const reporterId = (req.user as any).id;
+    const report = await listingService.reportViolation(listingId, reporterId, type, note);
+    res.status(201).json({ data: report });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
   }
 };
 
 export const deleteListing = async (req: Request, res: Response) => {
   try {
-    await listingService.deleteListing(req.params.id);
-    res.status(204).send();
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete listing' });
+    const { id } = req.params;
+    const result = await listingService.deleteListing(id);
+    res.json({ data: result });
+  } catch (err) {
+    res.status(404).json({ error: (err as Error).message });
   }
 };
+
+export const editListing = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+    const updates = req.body;
+    const listing = await listingService.updateListing(id, updates, userId);
+    res.json({ data: listing });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+};
+

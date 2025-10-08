@@ -1,15 +1,13 @@
-import { v4 as uuidv4 } from 'uuid';
-
 export enum ListingStatus {
   DRAFT = 'draft',
   PENDING = 'pending',
   APPROVED = 'approved',
   HIDDEN = 'hidden',
-  SOLD = 'sold'
+  SOLD = 'sold',
 }
 
 export interface Listing {
-  id: string;  // UUID
+  id: string;
   seller_id: string;
   title: string;
   price_vnd: number;
@@ -35,12 +33,12 @@ export interface Listing {
   updated_at: Date;
 }
 
-export const createListing = (partial: Omit<Listing, 'id' | 'created_at' | 'updated_at' | 'views_count' | 'edits_count' | 'reports_count'>): Listing => ({
-  id: uuidv4(),
-  ...partial,
+export const createListing = (listingData: Partial<Listing>): Listing => ({
+  ...listingData,
+  status: ListingStatus.PENDING,
   views_count: 0,
   edits_count: 0,
   reports_count: 0,
   created_at: new Date(),
   updated_at: new Date(),
-});
+} as Listing);

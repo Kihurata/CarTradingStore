@@ -18,7 +18,6 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || 'password123',
 });
 
-// Test connect (comment nếu lỗi)
 pool.query('SELECT NOW()').then(() => console.log('✅ DB connected')).catch((err) => console.error('DB connect fail:', err.message));
 
 export default pool;
