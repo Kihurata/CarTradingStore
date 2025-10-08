@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
+  const router = useRouter();
+
   return (
     <nav className="bg-white border-b shadow-sm">
       <div className="mx-auto max-w-7xl px-6 h-12 flex items-center justify-between">
@@ -19,11 +24,12 @@ export function Navbar() {
           </Link>
         </div>
 
-        <Link href="/dashboard/new">
-          <button className="bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[13px] font-semibold px-5 py-2 rounded transition-colors uppercase tracking-wide">
-            ĐĂNG TIN
-          </button>
-        </Link>
+        <button
+          onClick={() => router.push("/create-listing")}
+          className="bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[13px] font-semibold px-5 py-2 rounded transition-colors uppercase tracking-wide"
+        >
+          ĐĂNG TIN
+        </button>
       </div>
     </nav>
   );

@@ -1,8 +1,7 @@
-import { Header } from "@/src/components/layout/Header";
+
 import { Footer } from "@/src/components/layout/Footer";
 import { PageContainer } from "@/src/components/layout/PageContainer";
 import { ListingSection } from "@/src/components/home/ListingSection";
-import { Navbar } from "@/src/components/layout/Navbar";
 
 export default function HomePage() {
   return (

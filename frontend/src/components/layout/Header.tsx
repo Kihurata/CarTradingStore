@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
-import { AuthModal } from "@/components/auth/AuthModal";
+import { AuthModal } from "../auth/AuthModal";
 
 export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
