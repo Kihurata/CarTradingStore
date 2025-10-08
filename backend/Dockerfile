@@ -1,22 +1,22 @@
-# Sử dụng image Node.js chính thức
 FROM node:18
 
-# Thiết lập thư mục làm việc trong container
 WORKDIR /usr/src/app
 
-# Sao chép file package.json và package-lock.json (nếu có) vào container
+# Copy package files và install deps (bao gồm devDeps ts-node)
 COPY package*.json ./
+RUN npm ci
 
+# Rebuild bcrypt for Docker platform (fix ELF header)
+RUN npm rebuild bcrypt
 
-# Sao chép toàn bộ mã nguồn vào container
+# Copy source code (volumes mount cho hot reload)
 COPY . .
 
-# Thiết lập biến môi trường (nếu cần)
-ENV NODE_ENV=production
+# ENV
+ENV NODE_ENV=development
 ENV PORT=4000
 
-# Mở cổng ứng dụng
 EXPOSE 4000
 
-# Lệnh để chạy ứng dụng
-CMD ["npm", "start"]
+# CMD chạy dev mode (ts-node, no build dist)
+CMD ["npm", "run", "dev"]

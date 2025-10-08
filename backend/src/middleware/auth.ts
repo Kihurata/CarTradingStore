@@ -1,35 +1,34 @@
-
+// src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+
+interface JwtPayload {
+  id: string;
+  is_admin: boolean;
+}
 
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; is_admin: boolean };
+      user?: JwtPayload;
     }
   }
 }
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = req.cookies.jwt;  // Từ cookie
+  if (!token) return res.status(401).json({ error: 'Access denied' });
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET!, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token' });
-    }
-    (req as any).user = user as { id: string; is_admin: boolean };
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+    req.user = decoded;
     next();
-  });
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid token' });
+  }
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.user?.is_admin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  if (!req.user?.is_admin) return res.status(403).json({ error: 'Admin required' });
   next();
 };

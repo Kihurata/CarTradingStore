@@ -1,23 +1,20 @@
-# Sử dụng image Node.js chính thức
 FROM node:18
 
-# Thiết lập thư mục làm việc trong container
 WORKDIR /usr/src/app
 
-# Sao chép file package.json và package-lock.json (nếu có) vào container
+# Copy package files và install deps
 COPY package*.json ./
+RUN npm ci
 
-# Cài đặt các dependencies
-RUN npm install
-
-# Sao chép toàn bộ mã nguồn vào container
+# Copy source code
 COPY . .
 
-# Thiết lập biến môi trường (nếu cần)
+# ENV (nếu cần)
+ENV NODE_ENV=development
 ENV PORT=3000
+ENV VITE_API_URL=http://localhost:4000/api
 
-# Mở cổng ứng dụng
 EXPOSE 3000
 
-# Lệnh để chạy ứng dụng
-CMD ["npm", "start"]    
+# CMD chạy dev server (không override script, để package.json handle --hostname)
+CMD ["npm", "run", "dev"]
