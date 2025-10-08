@@ -8,10 +8,20 @@ import { AuthModal } from "@/components/auth/AuthModal";
 export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [userName, setUserName] = useState<string>("");
 
   const handleAuthClick = (tab: "login" | "register") => {
     setAuthTab(tab);
     setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (name: string) => {
+    setUserName(name);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    setUserName("");
   };
 
   return (
@@ -32,12 +42,24 @@ export function Header() {
               <Heart className="h-5 w-5 text-gray-600" />
             </Link>
 
-            <button
-              onClick={() => handleAuthClick("login")}
-              className="text-[15px] text-gray-700 hover:text-gray-900 whitespace-nowrap"
-            >
-              Đăng Nhập / Đăng ký
-            </button>
+            {userName ? (
+              <div className="flex items-center gap-3">
+                <span className="text-[15px] text-gray-700">{userName}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-[13px] text-gray-500 hover:text-gray-700"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleAuthClick("login")}
+                className="text-[15px] text-gray-700 hover:text-gray-900 whitespace-nowrap"
+              >
+                Đăng Nhập / Đăng ký
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -46,6 +68,7 @@ export function Header() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         defaultTab={authTab}
+        onAuthSuccess={handleAuthSuccess}
       />
     </>
   );

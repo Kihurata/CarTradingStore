@@ -7,9 +7,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultTab?: "login" | "register";
+  onAuthSuccess?: (userName: string) => void;
 }
 
-export function AuthModal({ isOpen, onClose, defaultTab = "login" }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, defaultTab = "login", onAuthSuccess }: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register">(defaultTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,10 +20,17 @@ export function AuthModal({ isOpen, onClose, defaultTab = "login" }: AuthModalPr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const userName = email.split("@")[0] || email.substring(0, 10);
+
     if (activeTab === "register") {
       console.log("Register:", { email, password, confirmPassword });
     } else {
       console.log("Login:", { email, password });
+    }
+
+    if (onAuthSuccess) {
+      onAuthSuccess(userName);
     }
   };
 
