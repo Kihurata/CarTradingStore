@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS users (
   status          user_status NOT NULL DEFAULT 'active',
   last_active_at  TIMESTAMPTZ,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TRIGGER trg_users_updated

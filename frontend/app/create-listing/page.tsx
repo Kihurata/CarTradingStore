@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import { Footer } from "@/src/components/layout/Footer";
 
 export default function CreateListingPage() {
@@ -33,6 +34,7 @@ export default function CreateListingPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+
 
       <main className="bg-white">
         <div className="mx-auto max-w-7xl px-6">
