@@ -1,3 +1,4 @@
+
 // frontend/src/services/http.ts
 const isServer = typeof window === "undefined";
 
