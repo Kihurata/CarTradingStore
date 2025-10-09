@@ -105,7 +105,7 @@ function Card({ item, skeleton }: { item?: ListingItem; skeleton?: boolean }) {
         )}
       </div>
       <div className="p-3">
-        <div className="line-clamp-1 text-[13px] font-medium">{item.title}</div>
+        <div className="line-clamp-1 text-black text-[15px] font-bold">{item.title}</div>
         <div className="mt-1 font-semibold text-blue-600">
           {item.price_vnd.toLocaleString("vi-VN")} ₫
         </div>

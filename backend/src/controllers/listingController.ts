@@ -31,12 +31,17 @@ export const getAllListings = async (req: Request, res: Response) => {
 };
 
 export const getListing = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+   try {
+    const id = req.params.id;
     const listing = await listingService.getListingById(id);
-    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
     res.json({ data: listing });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: (err as Error).message });
   }
 };

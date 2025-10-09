@@ -66,12 +66,29 @@ export async function getAllListings(
 }
 
 export async function getListingById(id: string) {
-  const { rows } = await pool.query('SELECT * FROM listings WHERE id = $1', [id]);
-  if (rows.length > 0) {
-    await logAudit('system', 'listing.view', 'listing', id);
-  }
-  return rows[0];
+  const sql = `
+    SELECT
+      l.*,
+      u.name AS seller_name,
+      u.phone AS seller_phone,
+      (
+        SELECT li.public_url
+        FROM listing_images li
+        WHERE li.listing_id = l.id
+        ORDER BY li.position ASC, li.created_at ASC
+        LIMIT 1
+      ) AS thumbnail_url
+    FROM listings l
+    LEFT JOIN users u ON u.id = l.seller_id
+    WHERE l.id::text = $1
+    LIMIT 1;
+  `;
+
+  const { rows } = await pool.query(sql, [id]);
+  return rows[0] || null;
 }
+
+
 
 export async function createListing(sellerId: string, listingData: any) {
   const values = [

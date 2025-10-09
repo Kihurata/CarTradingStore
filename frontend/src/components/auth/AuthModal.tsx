@@ -143,7 +143,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             placeholder="Email hoặc số điện thoại *"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+            className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
           />
 
@@ -152,7 +152,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             placeholder="Mật khẩu *"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+            className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
           />
 
@@ -162,7 +162,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               placeholder="Nhập lại mật khẩu *"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
               required
             />
           )}
