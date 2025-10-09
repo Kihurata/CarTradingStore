@@ -1,12 +1,12 @@
 services:
   database:
-    container_name: car-trading-db
+    container_name: database
     image: postgres:15
     restart: always
     environment:
       POSTGRES_DB: cartradingstore
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
+      POSTGRES_PASSWORD: 123456
       POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5432:5432"
@@ -58,7 +58,10 @@ services:
     env_file:
       - ./frontend/.env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+       # Server (SSR) gọi backend qua Docker network
+      - INTERNAL_API_BASE=http://backend:4000
+      # Client (browser) dùng rewrite qua frontend (Next.js)
+      - NEXT_PUBLIC_API_URL=/api
     volumes:
       - ./frontend:/usr/src/app
       - /usr/src/app/node_modules

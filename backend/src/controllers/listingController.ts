@@ -4,9 +4,20 @@ import { ListingStatus } from '../models/listing';
 
 export const getAllListings = async (req: Request, res: Response) => {
   try {
-    const { status, page = '1', limit = '10' } = req.query;
-    const listings = await listingService.getAllListings(status as string, parseInt(page as string), parseInt(limit as string));
-    res.json({ data: listings });
+    const { status, page = "1", limit = "10" } = req.query;
+    const p = parseInt(page as string, 10);
+    const l = parseInt(limit as string, 10);
+
+    const { items, total } = await listingService.getAllListings(
+      status as string | undefined,
+      p,
+      l
+    );
+
+    res.json({
+      data: items,
+      meta: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

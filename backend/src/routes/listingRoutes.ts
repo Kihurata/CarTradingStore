@@ -1,43 +1,33 @@
-import { Router } from 'express';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
-import * as listingController from '../controllers/listingController';
+import { Router } from "express";
+import { authenticateToken, requireAdmin } from "../middleware/auth";
+import * as listingController from "../controllers/listingController";
 
 const router = Router();
 
-// GET /api/listings
-router.get('/', authenticateToken, listingController.getAllListings);
+// Danh sách bài đăng
+router.get("/", listingController.getAllListings);
 
-// GET /api/listings/:id
-router.get('/', listingController.getAllListings);
-router.get('/:id', listingController.getListing);
-router.get('/user/:userId', listingController.getUserListings);
-router.get('/:id', authenticateToken, listingController.getListing);
+// Chi tiết 1 bài đăng
+router.get("/:id", listingController.getListing);
 
-// POST /api/listings
-router.post('/', authenticateToken, listingController.createListing);
+// Bài đăng theo user
+router.get("/user/:userId", authenticateToken, listingController.getUserListings);
 
-// PUT /api/listings/:id (edit)
-router.put('/:id', authenticateToken, listingController.editListing);  
-// PATCH /api/listings/:id/status (approve)
-router.patch('/:id/status', authenticateToken, requireAdmin, listingController.approveListing);
+// Tạo mới
+router.post("/", authenticateToken, listingController.createListing);
 
-// DELETE /api/listings/:id
-router.delete('/:id', authenticateToken, requireAdmin, listingController.deleteListing);
+// Sửa
+router.put("/:id", authenticateToken, listingController.editListing);
 
-// GET /api/listings/user
-router.get('/user', authenticateToken, listingController.getUserListings);
+// Duyệt bài (admin)
+router.patch("/:id/status", authenticateToken, requireAdmin, listingController.approveListing);
 
-// POST /api/listings/favorite
-router.post('/favorite', authenticateToken, listingController.addFavorite);
+// Xoá bài (admin)
+router.delete("/:id", authenticateToken, requireAdmin, listingController.deleteListing);
 
-// POST /api/listings/comparison
-router.post('/comparison', authenticateToken, listingController.addComparison);
+// Hành động khác
+router.post("/:id/favorite", authenticateToken, listingController.addFavorite);
+router.post("/:id/comparison", authenticateToken, listingController.addComparison);
+router.post("/:id/report", authenticateToken, listingController.reportViolation);
 
-// POST /api/listings/report
-router.post('/report', authenticateToken, listingController.reportViolation);
-
-
-router.post('/:id/favorite', authenticateToken, listingController.addFavorite);
-router.post('/:id/comparison', authenticateToken, listingController.addComparison);
-router.post('/:id/report', authenticateToken, listingController.reportViolation);
 export default router;
