@@ -3,10 +3,28 @@ import * as listingService from '../services/listingService';
 import { ListingStatus } from '../models/listing';
 
 export const getAllListings = async (req: Request, res: Response) => {
-  try {
-    const { status, page = '1', limit = '10' } = req.query;
-    const listings = await listingService.getAllListings(status as string, parseInt(page as string), parseInt(limit as string));
-    res.json({ data: listings });
+   try {
+    const { status, page = "1", limit = "10", min_price, max_price, body_type } = req.query;
+    const p = parseInt(page as string, 10);
+    const l = parseInt(limit as string, 10);
+
+    const filters = {
+      min_price: min_price ? Number(min_price) : undefined,
+      max_price: max_price ? Number(max_price) : undefined,
+      body_type: (body_type as string) || undefined,
+    };
+
+    const { items, total } = await listingService.getAllListings(
+      status as string | undefined,
+      p,
+      l,
+      filters
+    );
+
+    res.json({
+      data: items,
+      meta: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

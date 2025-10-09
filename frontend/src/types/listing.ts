@@ -1,9 +1,9 @@
 export enum ListingStatus {
-  DRAFT = 'draft',
-  PENDING = 'pending',
-  APPROVED = 'approved',
-  HIDDEN = 'hidden',
-  SOLD = 'sold',
+  DRAFT = "draft",
+  PENDING = "pending",
+  APPROVED = "approved",
+  HIDDEN = "hidden",
+  SOLD = "sold",
 }
 
 export interface Listing {
@@ -27,21 +27,11 @@ export interface Listing {
   views_count: number;
   edits_count: number;
   reports_count: number;
-  approved_at?: Date;
-  approved_by?: string;
-  created_at: Date;
-  updated_at: Date;
+  approved_at?: string | null; // backend có thể trả về ISO string
+  approved_by?: string | null;
+  created_at: string;
+  updated_at: string;
   thumbnail_url?: string;
   seller_name?: string;
   seller_phone?: string;
 }
-
-export const createListing = (listingData: Partial<Listing>): Listing => ({
-  ...listingData,
-  status: ListingStatus.PENDING,
-  views_count: 0,
-  edits_count: 0,
-  reports_count: 0,
-  created_at: new Date(),
-  updated_at: new Date(),
-} as Listing);

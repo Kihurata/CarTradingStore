@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-<<<<<<< Updated upstream
   /* config options here */
-=======
+  // ✅ Cho phép tải ảnh từ Supabase
   images: {
     remotePatterns: [
       {
@@ -12,6 +11,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
 
   async rewrites() {
   return [
@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   ];
 }
 
->>>>>>> Stashed changes
+
 };
 
 export default nextConfig;

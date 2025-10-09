@@ -1,13 +1,68 @@
 import pool from '../config/database';
 import { logAudit } from './auditService';
 import { ListingStatus } from '../models/listing';
+import { Listing } from '../models/listing';
 
-
-export async function getAllListings(status?: string, page: number = 1, limit: number = 10) {
+export async function getAllListings(
+  status: string | undefined,
+  page: number,
+  limit: number,
+  filters?: { min_price?: number; max_price?: number; body_type?: string }
+): Promise<{ items: Listing[]; total: number }> {
   const offset = (page - 1) * limit;
-  const query = `SELECT * FROM listings WHERE ($1::listing_status IS NULL OR status = $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
-  const { rows } = await pool.query(query, [status, limit, offset]);
-  return rows;
+
+  const params: (string | number)[] = [];
+  const where: string[] = [];
+
+  if (status) {
+    params.push(status);
+    where.push(`l.status = $${params.length}`);
+  }
+
+  if (filters?.min_price !== undefined) {
+    params.push(filters.min_price);
+    where.push(`l.price_vnd >= $${params.length}`);
+  }
+
+  if (filters?.max_price !== undefined) {
+    params.push(filters.max_price);
+    where.push(`l.price_vnd <= $${params.length}`);
+  }
+
+  if (filters?.body_type) {
+    params.push(filters.body_type);
+    where.push(`l.body_type ILIKE $${params.length}`);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  // ✅ chỉ thêm limit/offset khi chắc chắn có giá trị
+  params.push(limit);
+  params.push(offset);
+
+  const sql = `
+    SELECT
+      l.*,
+      (
+        SELECT li.public_url
+        FROM listing_images li
+        WHERE li.listing_id = l.id
+        ORDER BY li.position ASC, li.created_at ASC
+        LIMIT 1
+      ) AS thumbnail_url,
+      COUNT(*) OVER() AS total_count
+    FROM listings l
+    ${whereSql}
+    ORDER BY l.created_at DESC
+    LIMIT $${params.length - 1} OFFSET $${params.length};
+  `;
+
+  const { rows } = await pool.query(sql, params);
+
+  const total = rows[0] ? Number(rows[0].total_count) : 0;
+  const items = rows.map(({ total_count, ...rest }) => rest as Listing & { thumbnail_url?: string });
+
+  return { items, total };
 }
 
 export async function getListingById(id: string) {
