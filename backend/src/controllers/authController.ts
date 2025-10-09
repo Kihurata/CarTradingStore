@@ -7,7 +7,6 @@ import { sendResetEmail } from "../utils/email";
 import logger from "../utils/logger";
 
 
-
 /**
  * -----------------------------
  * Đăng ký tài khoản người dùng
@@ -15,50 +14,54 @@ import logger from "../utils/logger";
  */
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, confirmPassword, name, phone } = req.body;
+    const { email, password, confirmPassword, name, phone } = req.body ?? {};
 
-    if (!email || !password)
-      return res.status(400).json({ error: "Vui lòng nhập email và mật khẩu" });
-
-    if (password !== confirmPassword)
+    // 1) Validate đơn giản
+    if (!email || !password || !confirmPassword) {
+      return res.status(400).json({ error: "Thiếu email / password / confirmPassword" });
+    }
+    if (password !== confirmPassword) {
       return res.status(400).json({ error: "Mật khẩu xác nhận không khớp" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Mật khẩu tối thiểu 6 ký tự" });
+    }
 
-    const derivedName = name || email.split("@")[0] || email.substring(0, 10);
+    // 2) Check email tồn tại
+    const exist = await pool.query("SELECT 1 FROM users WHERE email = $1 LIMIT 1", [email]);
+    if (exist.rowCount && exist.rowCount > 0) {
+      return res.status(409).json({ error: "Email đã được sử dụng" });
+    }
+
+    // 3) Băm mật khẩu
     const passwordHash = await bcrypt.hash(password, 10);
-    const { v4: uuidv4 } = await import('uuid'); // load ESM đúng cách
-    const id = uuidv4();
 
-    const { rows } = await pool.query(
-      `INSERT INTO users (id, email, password_hash, name, phone)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [id, email, passwordHash, derivedName, phone]
+    // 4) Tạo user (DB tự gen id bằng gen_random_uuid())
+    const inserted = await pool.query(
+      `INSERT INTO users (email, password_hash, name, phone)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email`,
+      [email, passwordHash, name ?? email.split("@")[0], phone ?? null]
     );
+    const user = inserted.rows[0];
 
+    // 5) Tạo token trả về cho FE (tuỳ bạn có muốn login luôn sau sign-up)
     const token = jwt.sign(
-      { id: rows[0].id, is_admin: false },
-      process.env.JWT_SECRET!,
+      { sub: user.id, email: user.email },
+      process.env.JWT_SECRET || "dev_secret_change_me",
       { expiresIn: "7d" }
     );
 
-    res.cookie("jwt", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    const { password_hash, ...safeUser } = rows[0];
-    safeUser.username = safeUser.name;
-
-    logger?.info(`User registered: ${email}`);
-    res.status(201).json({ success: true, user: safeUser });
+    return res.status(201).json({ token, user });
   } catch (err: any) {
-    if (err.code === "23505") {
-      res.status(409).json({ error: "Email đã tồn tại" });
-    } else {
-      logger?.error(`Register error: ${err.message}`);
-      res.status(500).json({ error: "Lỗi máy chủ khi đăng ký" });
+    // Bắt lỗi unique_violation của Postgres (mã 23505) nếu rơi vào race condition
+    const code = err?.code || err?.original?.code;
+    if (code === "23505") {
+      return res.status(409).json({ error: "Email đã được sử dụng" });
     }
+
+    console.error("Register error:", err?.message || err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -67,52 +70,50 @@ export const register = async (req: Request, res: Response) => {
  * Đăng nhập người dùng
  * -----------------------------
  */
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: import("express").Request, res: import("express").Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body ?? {};
+
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email và mật khẩu yêu cầu' });
+      return res.status(400).json({ error: "Thiếu email hoặc mật khẩu" });
     }
 
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = rows[0];
+    // Tìm user theo email
+    const result = await pool.query(
+      "SELECT id, name, email, password_hash FROM users WHERE email = $1 LIMIT 1",
+      [email]
+    );
+    const user = result.rows[0];
+
     if (!user) {
-      return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
+      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
-    // ✅ Tạo JWT token
+    // Tạo JWT (tuỳ bạn đang để SECRET ở đâu)
     const token = jwt.sign(
-      { id: user.id, is_admin: user.is_admin },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
+      { sub: user.id, email: user.email },
+      process.env.JWT_SECRET || "dev_secret_change_me",
+      { expiresIn: "7d" }
     );
 
-    // ✅ Gửi cookie & JSON
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+    // Chuẩn hoá dữ liệu trả về cho frontend
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
     });
-
-    // ✅ Xóa password_hash và chuẩn hóa user
-    const { password_hash, ...safeUser } = user;
-    safeUser.username = safeUser.name || email.split('@')[0];
-
-    logger?.info(`User logged in: ${email}`);
-
-    // ✅ Gửi về đúng format frontend đang đợi
-    return res.status(200).json({
-      token, // 👈 để frontend nhận được token
-      user: safeUser, // 👈 để frontend hiển thị tên người dùng
-    });
-  } catch (err) {
-    logger?.error(`Login error: ${err}`);
-    res.status(500).json({ error: (err as Error).message });
+  } catch (err: any) {
+    // Log nội bộ rồi trả JSON 500 chuẩn
+    console.error("Login error:", err?.message || err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

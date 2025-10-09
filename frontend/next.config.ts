@@ -13,14 +13,12 @@ const nextConfig: NextConfig = {
 
   // ✅ Proxy request từ browser /api/* → backend
   async rewrites() {
+    // INTERNAL_API_BASE = http://backend:4000 (trong Docker Compose)
+    const base = process.env.INTERNAL_API_BASE || 'http://localhost:4000';
     return [
       {
-        source: "/api/:path*",
-        // Local dev 2 terminal:
-        // destination: "http://localhost:4000/api/:path*",
-
-        // Docker Compose: frontend container vẫn proxy về host
-        destination: "http://localhost:4000/api/:path*",
+        source: '/api/:path*',
+        destination: `${base}/api/:path*`,
       },
     ];
   },

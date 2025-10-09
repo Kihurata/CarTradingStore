@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
-import { apiUrl } from "@/src/services/http";
+
+// --- thêm/đổi TYPE Ở ĐẦU FILE ---
+type User = {
+  id?: string;
+  name?: string;
+  email: string;
+};
+
+type AuthResponse = {
+  token: string;
+  user: User;
+};
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -51,11 +62,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       setActiveTab("login");
     } else {
       // ✅ Đăng nhập
-      const data = await api<{ token: string; user: any }>("/auth/login", {
+      const data = await api<AuthResponse>("/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
@@ -74,18 +83,22 @@ const handleSubmit = async (e: React.FormEvent) => {
       alert("✅ Đăng nhập thành công!");
       onClose();
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Auth error:", err);
-    try {
-      const parsed = JSON.parse(err.message);
-      alert(parsed.error || "Đăng nhập/Đăng ký thất bại!");
-    } catch {
-      alert(err.message || "Đăng nhập/Đăng ký thất bại!");
+    let msg = "Đăng nhập/Đăng ký thất bại!";
+    if (err instanceof Error) {
+      try {
+        const parsed = JSON.parse(err.message) as { error?: string };
+        msg = parsed.error ?? err.message;
+      } catch {
+        msg = err.message;
+      }
     }
-  } finally {
+    alert(msg);
+    } finally {
     setLoading(false);
-  }
-};
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
