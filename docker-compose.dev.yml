@@ -1,0 +1,92 @@
+services:
+  database:
+    container_name: car-trading-db
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: cartradingstore
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./backend/src/config/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./backend/config/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - cartradingstore
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cartradingstore"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: car-trading-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: cartradingstore
+      DB_USER: postgres
+      DB_PASSWORD: password123
+      PORT: 4000
+      JWT_SECRET: your_super_secret_jwt_key_here
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "4000:4000"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - cartradingstore
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: car-trading-frontend
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - cartradingstore
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: car-trading-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@mail.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin123"
+    ports:
+      - "16543:80"
+    depends_on:
+      - database
+    networks:
+      - cartradingstore
+
+networks:
+  cartradingstore:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
