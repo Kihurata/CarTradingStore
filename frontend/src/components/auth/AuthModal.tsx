@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { api } from "@/lib/api";
+import { apiUrl } from "@/src/services/http";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,33 +12,85 @@ interface AuthModalProps {
   onAuthSuccess?: (userName: string) => void;
 }
 
-export function AuthModal({ isOpen, onClose, defaultTab = "login", onAuthSuccess }: AuthModalProps) {
+export function AuthModal({
+  isOpen,
+  onClose,
+  defaultTab = "login",
+  onAuthSuccess,
+}: AuthModalProps) {
   const [activeTab, setActiveTab] = useState<"login" | "register">(defaultTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    const userName = email.split("@")[0] || email.substring(0, 10);
-
+  try {
     if (activeTab === "register") {
-      console.log("Register:", { email, password, confirmPassword });
-    } else {
-      console.log("Login:", { email, password });
-    }
+      if (password !== confirmPassword) {
+        alert("❌ Mật khẩu nhập lại không khớp!");
+        setLoading(false);
+        return;
+      }
 
-    if (onAuthSuccess) {
-      onAuthSuccess(userName);
+      // ✅ Gửi đủ cả confirmPassword
+      await api("/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, confirmPassword }),
+      });
+
+      alert("🎉 Đăng ký thành công! Hãy đăng nhập.");
+      setActiveTab("login");
+    } else {
+      // ✅ Đăng nhập
+      const data = await api<{ token: string; user: any }>("/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const { token, user } = data;
+      if (!token || !user) throw new Error("Thiếu dữ liệu phản hồi từ server.");
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+      }
+
+      if (onAuthSuccess) {
+        onAuthSuccess(user.name || user.email);
+      }
+
+      alert("✅ Đăng nhập thành công!");
+      onClose();
     }
-  };
+  } catch (err: any) {
+    console.error("Auth error:", err);
+    try {
+      const parsed = JSON.parse(err.message);
+      alert(parsed.error || "Đăng nhập/Đăng ký thất bại!");
+    } catch {
+      alert(err.message || "Đăng nhập/Đăng ký thất bại!");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+        {/* Nút đóng */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-500 hover:bg-gray-600 text-white transition-colors"
@@ -45,6 +99,7 @@ export function AuthModal({ isOpen, onClose, defaultTab = "login", onAuthSuccess
           <X className="h-5 w-5" />
         </button>
 
+        {/* Tabs */}
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab("login")}
@@ -68,10 +123,11 @@ export function AuthModal({ isOpen, onClose, defaultTab = "login", onAuthSuccess
           </button>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-4">
           <input
-            type="text"
-            placeholder="Email hoặc Số điện thoại đăng nhập *"
+            type="email"
+            placeholder="Email hoặc số điện thoại *"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
@@ -100,9 +156,14 @@ export function AuthModal({ isOpen, onClose, defaultTab = "login", onAuthSuccess
 
           <button
             type="submit"
+            disabled={loading}
             className="w-full bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[16px] font-semibold py-3 rounded transition-colors"
           >
-            {activeTab === "register" ? "Đăng ký" : "Đăng nhập"}
+            {loading
+              ? "Đang xử lý..."
+              : activeTab === "register"
+              ? "Đăng ký"
+              : "Đăng nhập"}
           </button>
         </form>
       </div>

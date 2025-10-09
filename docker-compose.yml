@@ -8,9 +8,16 @@ services:
     env_file:
       - ./backend/.env
     environment:
+<<<<<<< Updated upstream
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+=======
+      POSTGRES_DB: cartradingstore
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_HOST_AUTH_METHOD: md5
+>>>>>>> Stashed changes
     ports:
       - "5432:5432"
     volumes:
