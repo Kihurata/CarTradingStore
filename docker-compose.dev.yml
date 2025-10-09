@@ -13,7 +13,6 @@ services:
     volumes:
       - db:/var/lib/postgresql/data
       - ./backend/src/config/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      - ./backend/config/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     networks:
       - cartradingstore
     healthcheck:

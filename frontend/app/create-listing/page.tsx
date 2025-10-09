@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Footer } from "@/src/components/layout/Footer";
+
 export default function CreateListingPage() {
   const [formData, setFormData] = useState({
     hangXe: "",
@@ -423,6 +425,8 @@ export default function CreateListingPage() {
           </form>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

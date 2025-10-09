@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/src/components/layout/Header";
 import { Navbar } from "@/src/components/layout/Navbar";
-import { Footer } from "@/src/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "XeVip",
@@ -17,7 +16,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <Navbar />
         {children}
-        <Footer />
       </body>
     </html>
   );

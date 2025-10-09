@@ -34,7 +34,7 @@ export function ListingSection({
     <SectionWrapper title={title}>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {data.items.map((x) => (
-          <Link key={x.id} href={`/listings/${x.id}`} className="block border rounded-xl overflow-hidden hover:shadow">
+          <Link key={x.id} href={`/listings/${x.id}`} className="block border rounded-xl overflow-hidden hover:shadow bg-white">
             <div className="relative h-40 bg-slate-100">
               {x.thumbnail_url && (
                 <Image

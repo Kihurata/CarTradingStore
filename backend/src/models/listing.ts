@@ -32,8 +32,6 @@ export interface Listing {
   created_at: Date;
   updated_at: Date;
   thumbnail_url?: string;
-  seller_name?: string;
-  seller_phone?: string;
 }
 
 export const createListing = (listingData: Partial<Listing>): Listing => ({
