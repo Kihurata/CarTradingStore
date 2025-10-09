@@ -1,3 +1,9 @@
+import { apiUrl } from "@/src/services/http";
+
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = apiUrl(path);
+
+  const res = await fetch(url, {
 // frontend/src/lib/api.ts
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
 
