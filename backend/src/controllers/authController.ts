@@ -6,8 +6,7 @@ import pool from "../config/database";
 import { sendResetEmail } from "../utils/email";
 import logger from "../utils/logger";
 
-// Import uuid v4 đúng chuẩn TypeScript + CommonJS
-import { v4 as uuidv4 } from "uuid";
+
 
 /**
  * -----------------------------
@@ -26,6 +25,7 @@ export const register = async (req: Request, res: Response) => {
 
     const derivedName = name || email.split("@")[0] || email.substring(0, 10);
     const passwordHash = await bcrypt.hash(password, 10);
+    const { v4: uuidv4 } = await import('uuid'); // load ESM đúng cách
     const id = uuidv4();
 
     const { rows } = await pool.query(
