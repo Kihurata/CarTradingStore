@@ -9,6 +9,7 @@ services:
       - ./backend/.env
     environment:
 
+
       POSTGRES_DB: cartradingstore
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456
