@@ -1,18 +1,13 @@
-
-import { Footer } from "@/src/components/layout/Footer";
-import { PageContainer } from "@/src/components/layout/PageContainer";
-import { ListingSection } from "@/src/components/home/ListingSection";
+import PriceBucketsSection from "@/src/components/home/PriceBucketsSection";
+import PopularBodyTypesSection from "@/src/components/home/PopularBodyTypesSection";
 
 export default function HomePage() {
   return (
-    <>
-      <main className="bg-white">
-        <PageContainer>
-          <ListingSection title="Tin bán xe theo khoảng giá" endpoint="/listings?bucket=by-price" />
-          <ListingSection title="Xe ô tô cũ theo hãng" endpoint="/listings?bucket=by-brand" />
-        </PageContainer>
-      </main>
-      <Footer />
-    </>
+    <main className="bg-white">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <PriceBucketsSection />
+        <PopularBodyTypesSection />
+      </div>
+    </main>
   );
 }
