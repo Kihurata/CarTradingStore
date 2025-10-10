@@ -64,7 +64,7 @@ WITH imgs AS (
     ('Kia','Seltos','cars/seltos-2022.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/seltos-2022.webp'),
     ('Ford','Ranger','cars/ranger-2021.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/ranger-2021.webp'),
     ('VinFast','Lux A2.0','cars/luxa20-2020.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/luxa20-2020.jpg'),
-    ('Mercedes','C300 AMG','cars/c300amg-2018.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/c300amg-2018.png'),
+    ('Mercedes','C300 AMG','cars/c300amg-2018.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/c300amg-2018.webp'),
     ('Mitsubishi','Xpander','cars/xpander-2021.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/xpander-2021.avif'),
     ('Peugeot','3008','cars/peugeot3008-2020.png','https://ybhdhpmledyxuzdrrnzp.supabase.co/storage/v1/object/public/cars/peugeot3008-2020.webp')
   ) AS t(brand, model, file_key, public_url)

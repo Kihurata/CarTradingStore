@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
-
+import ReportModal from "@/src/components/listings/ReportModal"; 
 
 interface ListingDetail {
   id: string;
@@ -20,11 +20,13 @@ interface ListingDetail {
   seller_name?: string;
   seller_phone?: string;
   thumbnail_url?: string;
+  created_at?: string;
 }
 
 export default function ListingDetailPage({ params }: { params: { id: string } }) {
   const [car, setCar] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openReport, setOpenReport] = useState(false); 
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,32 +69,80 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
               </div>
             )}
           </div>
-          <div className="mt-4 border-t pt-4 space-y-1 text-sm text-black">
-            <p>
-              <strong>Năm sản xuất:</strong> {car.year}
-            </p>
-            <p>
-              <strong>Km đã đi:</strong> {car.mileage_km?.toLocaleString("vi-VN") || 0} km
-            </p>
-            <p>
-              <strong>Hộp số:</strong> {car.gearbox}
-            </p>
-            <p>
-              <strong>Nhiên liệu:</strong> {car.fuel}
-            </p>
-            <p>
-              <strong>Khu vực:</strong> {car.location_text}
-            </p>
-          </div>
+          {/* Tình trạng xe */}
+          <section className="mt-6">
+            <h2 className="text-lg font-semibold mb-3 text-black">Tình trạng xe</h2>
+
+            {/* Chuẩn hoá dữ liệu để render */}
+            {(() => {
+              const leftSpecs = [
+                { label: "Năm SX",     value: car.year?.toString() || "—" },
+                { label: "Nhiên liệu", value: car.fuel || "—" },
+                { label: "Kiểu dáng",  value: (car as any).body_type || "—" }, // nếu có body_type
+                { label: "Tình trạng", value: (car as any).condition || "Xe cũ" },
+              ];
+
+              const rightSpecs = [
+                { label: "Km đã đi",   value: car.mileage_km ? `${car.mileage_km.toLocaleString("vi-VN")} km` : "—" },
+                { label: "Hộp số",     value: car.gearbox || "—" },
+                { label: "Xuất xứ",    value: (car as any).origin || "—" },
+                { label: "Tỉnh thành", value: car.location_text || "—" },
+              ];
+
+              const SpecList = ({ items }: { items: {label: string; value: string}[] }) => (
+                <ul className="divide-y rounded-lg border bg-white">
+                  {items.map(({ label, value }) => (
+                    <li key={label} className="flex items-center justify-between px-4 py-3 text-sm">
+                      <span className="text-gray-600 font-medium">{label}:</span>
+                      <span className="text-gray-900">{value}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <SpecList items={leftSpecs} />
+                  <SpecList items={rightSpecs} />
+                </div>
+              );
+            })()}
+          </section>
+
 
           <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">Mô tả</h2>
+            <h2 className="text-lg font-semibold mb-2 text-black">Mô tả</h2>
             <p className="text-gray-700 whitespace-pre-line">
               {car.description || "Không có mô tả chi tiết."}
             </p>
           </div>
-        </div>
 
+          {/* Thanh công cụ dưới mô tả */}
+          <div className="flex flex-wrap items-center justify-between border-t border-gray-200 mt-6 pt-4 text-sm text-gray-600">
+            {/* Nút báo cáo */}
+            <button
+              className="flex items-center gap-2 border border-gray-300 rounded px-3 py-2 hover:bg-gray-50 transition"
+              onClick={() => setOpenReport(true)} 
+            >
+              <span className="text-black font-semibold">⚠ Báo cáo tin vi phạm</span>
+            </button>
+
+            {/* Ngày đăng + lưu tin */}
+            <div className="flex items-center gap-3 text-gray-500">
+              <span>{new Date(car.created_at || Date.now()).toLocaleDateString("vi-VN")}</span>
+              <span className="text-gray-300">|</span>
+              <button
+                className="flex items-center gap-1 text-gray-700 hover:text-black font-semibold"
+                onClick={() => alert("Đã lưu tin!")}
+              >
+                <span>♡</span>
+                <span>Lưu tin</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+        
         {/* Thông tin người bán */}
         <aside className="border rounded-lg p-4 bg-white shadow-sm h-fit">
           <h2 className="text-lg font-semibold mb-3 text-black">Liên hệ người bán</h2>
@@ -108,6 +158,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
           </button>
         </aside>
       </div>
+      <ReportModal open={openReport} onClose={() => setOpenReport(false)} listingId={car.id} />
     </main>
   );
 }
