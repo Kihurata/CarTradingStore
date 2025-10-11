@@ -38,7 +38,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: password123
       PORT: 4000
-      JWT_SECRET: your_super_secret_jwt_key_here
+      JWT_SECRET: Kz2w!p3#N7tq@h1Yd9uZxFv$e4Rj%T8m^A6sG0b*C5rLkQWnP2oE#V!yH@JxZ
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules

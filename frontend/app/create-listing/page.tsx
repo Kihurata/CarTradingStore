@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createListing } from "@/src/services/listingService";
 
 import { Footer } from "@/src/components/layout/Footer";
 
@@ -25,17 +26,128 @@ export default function CreateListingPage() {
     diaChiNguoiBan: "",
     noiVanXe: "",
     quanHuyen: "",
+    youtubeUrl: "",
+  });
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+
+const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const files = Array.from(event.target.files || []);
+  const newImages = [...selectedImages, ...files];
+  
+  // Validate số lượng ảnh
+  if (newImages.length > 25) {
+    alert("Tối đa 25 hình ảnh");
+    return;
+  }
+
+  // Validate dung lượng và tạo preview
+  const newPreviews: string[] = [];
+  files.forEach((file) => {
+    if (file.size > 2048 * 1024) {
+      alert(`Hình ảnh ${file.name} vượt quá dung lượng 2048KB`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        newPreviews.push(e.target.result as string);
+        if (newPreviews.length === files.length) {
+          setImagePreviews([...imagePreviews, ...newPreviews]);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
+  setSelectedImages(newImages);
+};
+
+  const removeImage = (index) => {
+    setSelectedImages(selectedImages.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Kiểm tra token trước khi submit
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Vui lòng đăng nhập trước khi đăng tin");
+      window.location.href = '/login';
+      return;
+    }
+  }
+
+  // Validate số lượng ảnh
+  if (selectedImages.length < 3) {
+    alert("Vui lòng đăng ít nhất 03 hình ảnh");
+    return;
+  }
+
+  // Validate giá bán
+  const priceValue = parseInt(formData.giaBan.replace(/\D/g, ''));
+  if (!priceValue || priceValue <= 0) {
+    alert("Vui lòng nhập giá bán hợp lệ");
+    return;
+  }
+
+  // Validate các trường bắt buộc
+  const requiredFields = [
+    'hangXe', 'dongXe', 'tinhTrang', 'xuatXu', 'namSanXuat',
+    'giaBan', 'tieuDe', 'moTa', 'tenNguoiBan', 'soDienThoai',
+    'diaChiNguoiBan', 'noiVanXe', 'quanHuyen'
+  ];
+
+  const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+  if (missingFields.length > 0) {
+    alert(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
+    return;
+  }
+
+  try {
+    console.log("Submitting form data:", formData);
+    
+    // Gọi API create listing với cả dữ liệu và ảnh
+    const result = await createListing(formData, selectedImages);
+    
+    console.log("Listing created successfully:", result);
+    alert("Đăng tin thành công! Tin của bạn đang chờ duyệt.");
+    
+    // Reset form sau khi thành công
+    setFormData({
+      hangXe: "", dongXe: "", dongXeDung: "", tinhTrang: "xe-cu", 
+      xuatXu: "trong-nuoc", namSanXuat: "", dienKy: "", hopSo: "so-tu-dong", 
+      nhienLieu: "xang", kieuDang: "", soChoNgoi: "", giaBan: "", 
+      tieuDe: "", moTa: "", tenNguoiBan: "", soDienThoai: "", 
+      diaChiNguoiBan: "", noiVanXe: "", quanHuyen: "", youtubeUrl: "",
+    });
+    setSelectedImages([]);
+    setImagePreviews([]);
+    
+  } catch (error) {
+    console.error("Error creating listing:", error);
+    const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định khi đăng tin";
+    
+    if (errorMessage.includes('đăng nhập') || errorMessage.includes('token')) {
+      // Xóa token và redirect đến login
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      alert(errorMessage);
+      window.location.href = '/login';
+    } else {
+      alert(`Lỗi: ${errorMessage}`);
+    }
+  }
+};
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-
-
       <main className="bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -72,14 +184,14 @@ export default function CreateListingPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Dòng xe<span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="Nhập dòng xe (VD: Civic, Camry...)"
                       value={formData.dongXe}
                       onChange={(e) => setFormData({ ...formData, dongXe: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
-                    >
-                      <option value="">Chọn dòng xe</option>
-                    </select>
+                    />
                     <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập dòng xe</p>
                   </div>
 
@@ -366,15 +478,15 @@ export default function CreateListingPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Quận/Huyện<span className="text-red-500">*</span>
                       </label>
-                      <select
+                      <input
+                        type="text"
+                        placeholder="Nhập quận/huyện (VD: Quận 1, Bình Thạnh...)"
                         value={formData.quanHuyen}
                         onChange={(e) => setFormData({ ...formData, quanHuyen: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                         required
-                      >
-                        <option value="">Chọn quận/huyện</option>
-                      </select>
-                      <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn quận/huyện</p>
+                      />
+                      <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập quận/huyện</p>
                     </div>
                   </div>
                 </div>
@@ -400,24 +512,53 @@ export default function CreateListingPage() {
               <div className="bg-blue-50 rounded-lg shadow p-6 sticky top-24">
                 <h3 className="text-[16px] font-semibold text-blue-600 mb-4">ĐĂNG ẢNH & VIDEO XE</h3>
 
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-4">
+                <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-4 cursor-pointer" onClick={() => document.getElementById('image-upload').click()}>
                   <div className="text-blue-500 text-4xl mb-2">+</div>
                   <p className="text-sm text-gray-600">Thêm ảnh</p>
                 </div>
+                <input
+                  id="image-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
 
-                <p className="text-xs text-red-500 mb-3">⚠ Vui lòng nhập dòng xe</p>
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        <img src={preview} alt={`Preview ${index}`} className="w-full h-20 object-cover rounded" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="bg-white rounded p-3 text-xs text-gray-600 space-y-2">
                   <p>* Đăng ít nhất 03 hình và tối đa 25 hình nội đô ngoại thất xe</p>
                   <p>* Dung lượng mỗi hình tối đa 2048KB</p>
                   <p>* Hình ảnh phù hợp được hệ thống cho tăng tối ưu để bán xe nhanh hơn, tiếp cận khách hàng dễ dàng hơn</p>
-                  <p>* Vui lòng không trùng lặp tử có website</p>
+                  <p>* Vui lòng không trùng lặp với các website khác</p>
                 </div>
 
                 <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">Video giới thiệu sản phẩm</h4>
+                <input
+                  type="url"
+                  placeholder="Dán link YouTube (VD: https://www.youtube.com/watch?v=...)"
+                  value={formData.youtubeUrl}
+                  onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 mb-2"
+                />
                 <div className="space-y-2 text-xs text-gray-600">
-                  <p>Gửi về <a href="#" className="text-blue-600 underline">https://www.youtube.com/watch?v</a></p>
-                  <p>* Chỉ chấp video của Youtube</p>
+                  <p>* Chỉ chấp nhận video của Youtube</p>
                   <p>* Chịu trách nhiệm bản quyền nội dung</p>
                 </div>
               </div>

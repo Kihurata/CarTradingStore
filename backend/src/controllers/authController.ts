@@ -85,6 +85,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
     }
 
+<<<<<<< Updated upstream
     // ✅ Tạo JWT token
     const token = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
@@ -97,6 +98,27 @@ export const login = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+=======
+    // Tạo JWT (tuỳ bạn đang để SECRET ở đâu)
+   const token = jwt.sign(
+  { 
+    id: user.id, 
+    email: user.email,
+    name: user.name,
+    isAdmin: user.is_admin 
+  },
+  process.env.JWT_SECRET || process.env.SECRET!,
+  { expiresIn: '24h' }
+);
+    // Chuẩn hoá dữ liệu trả về cho frontend
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+>>>>>>> Stashed changes
     });
 
     // ✅ Xóa password_hash và chuẩn hóa user

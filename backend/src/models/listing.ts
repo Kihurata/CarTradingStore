@@ -1,6 +1,7 @@
+// backend/src/models/listing.ts
 export enum ListingStatus {
   DRAFT = 'draft',
-  PENDING = 'pending',
+  PENDING = 'pending', 
   APPROVED = 'approved',
   HIDDEN = 'hidden',
   SOLD = 'sold',
@@ -31,6 +32,19 @@ export interface Listing {
   approved_by?: string;
   created_at: Date;
   updated_at: Date;
+<<<<<<< Updated upstream
+=======
+  thumbnail_url?: string;
+  
+  // THÊM CÁC TRƯỜNG MỚI TỪ FORM
+  seller_name: string;
+  seller_phone: string;
+  condition: string; // xe-cu, xe-moi
+  origin: string; // trong-nuoc, nhap-khau
+  seller_address: string;
+  district: string;
+  youtube_url?: string;
+>>>>>>> Stashed changes
 }
 
 export const createListing = (listingData: Partial<Listing>): Listing => ({

@@ -1,5 +1,7 @@
+// backend/src/services/listingService.ts
 import pool from '../config/database';
 import { logAudit } from './auditService';
+<<<<<<< Updated upstream
 import { ListingStatus } from '../models/listing';
 
 
@@ -8,17 +10,178 @@ export async function getAllListings(status?: string, page: number = 1, limit: n
   const query = `SELECT * FROM listings WHERE ($1::listing_status IS NULL OR status = $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
   const { rows } = await pool.query(query, [status, limit, offset]);
   return rows;
+=======
+import { ListingStatus, Listing } from '../models/listing';
+import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+);
+
+export async function getAllListings(
+  status: string | undefined, 
+  page: number, 
+  limit: number, 
+  filters?: { 
+    min_price?: number; 
+    max_price?: number; 
+    body_type?: string;
+    brand?: string;
+    condition?: string;
+  }
+): Promise<{ items: Listing[]; total: number }> {
+  const offset = (page - 1) * limit;
+  const params: (string | number)[] = [];
+  const where: string[] = [];
+
+  if (status) {
+    params.push(status);
+    where.push(`l.status = $${params.length}`);
+  }
+
+  if (filters?.min_price !== undefined) {
+    params.push(filters.min_price);
+    where.push(`l.price_vnd >= $${params.length}`);
+  }
+
+  if (filters?.max_price !== undefined) {
+    params.push(filters.max_price);
+    where.push(`l.price_vnd <= $${params.length}`);
+  }
+
+  if (filters?.body_type) {
+    params.push(filters.body_type);
+    where.push(`l.body_type ILIKE $${params.length}`);
+  }
+
+  if (filters?.brand) {
+    params.push(`%${filters.brand}%`);
+    where.push(`l.brand ILIKE $${params.length}`);
+  }
+
+  if (filters?.condition) {
+    params.push(filters.condition);
+    where.push(`l.condition = $${params.length}`);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  params.push(limit);
+  params.push(offset);
+
+  const sql = `
+    SELECT l.*, 
+    (SELECT li.public_url FROM listing_images li WHERE li.listing_id = l.id ORDER BY li.position ASC, li.created_at ASC LIMIT 1) AS thumbnail_url,
+    COUNT(*) OVER() AS total_count 
+    FROM listings l 
+    ${whereSql} 
+    ORDER BY l.created_at DESC 
+    LIMIT $${params.length - 1} OFFSET $${params.length}
+  `;
+
+  const { rows } = await pool.query(sql, params);
+  const total = rows[0] ? Number(rows[0].total_count) : 0;
+  const items = rows.map(({ total_count, ...rest }) => rest as Listing & { thumbnail_url?: string });
+  
+  return { items, total };
+>>>>>>> Stashed changes
 }
 
 export async function getListingById(id: string) {
-  const { rows } = await pool.query('SELECT * FROM listings WHERE id = $1', [id]);
+  const { rows } = await pool.query(`
+    SELECT l.*, 
+    ARRAY_AGG(li.public_url ORDER BY li.position) as image_urls
+    FROM listings l 
+    LEFT JOIN listing_images li ON l.id = li.listing_id 
+    WHERE l.id = $1 
+    GROUP BY l.id
+  `, [id]);
+  
   if (rows.length > 0) {
     await logAudit('system', 'listing.view', 'listing', id);
   }
   return rows[0];
 }
 
-export async function createListing(sellerId: string, listingData: any) {
+export async function createListing(sellerId: string, rawData: any, imageFiles: Express.Multer.File[] = []) {
+  // VALIDATE SELLER_ID
+  if (!sellerId) {
+    throw new Error('Seller ID is required');
+  }
+
+  console.log('Creating listing for seller:', sellerId);
+
+  // VALIDATE VÀ CHUYỂN ĐỔI DỮ LIỆU
+  const currentYear = new Date().getFullYear();
+  const maxYear = currentYear + 1;
+  
+  const listingData = {
+    title: rawData.tieuDe,
+    price_vnd: parseInt(rawData.giaBan?.replace(/\D/g, '')) || 0,
+    brand: rawData.hangXe,
+    model: rawData.dongXe,
+    year: parseInt(rawData.namSanXuat) || currentYear,
+    mileage_km: rawData.dienKy ? parseInt(rawData.dienKy) : null,
+    gearbox: rawData.hopSo,
+    fuel: rawData.nhienLieu,
+    body_type: rawData.kieuDang,
+    seats: rawData.soChoNgoi ? parseInt(rawData.soChoNgoi) : null,
+    description: rawData.moTa,
+    
+    // CÁC TRƯỜNG MỚI
+    seller_name: rawData.tenNguoiBan,
+    seller_phone: rawData.soDienThoai,
+    condition: rawData.tinhTrang,
+    origin: rawData.xuatXu,
+    seller_address: rawData.diaChiNguoiBan,
+    district: rawData.quanHuyen,
+    youtube_url: rawData.youtubeUrl || null,
+    
+    // Tạo location_text từ các trường
+    location_text: `${rawData.noiVanXe}, ${rawData.quanHuyen}, ${rawData.diaChiNguoiBan}`
+  };
+
+  // VALIDATION CHI TIẾT
+  const requiredFields = ['title', 'brand', 'model', 'year', 'price_vnd', 'seller_name', 'seller_phone'];
+  const missingFields = requiredFields.filter(field => !listingData[field as keyof typeof listingData]);
+  
+  if (missingFields.length > 0) {
+    throw new Error(`Thiếu các trường bắt buộc: ${missingFields.join(', ')}`);
+  }
+
+  if (listingData.price_vnd <= 0) {
+    throw new Error('Giá bán phải lớn hơn 0');
+  }
+
+  // VALIDATE NĂM SẢN XUẤT
+  if (listingData.year < 1900 || listingData.year > maxYear) {
+    throw new Error(`Năm sản xuất phải từ 1900 đến ${maxYear}`);
+  }
+
+  // VALIDATE SỐ KM
+  if (listingData.mileage_km && listingData.mileage_km < 0) {
+    throw new Error('Số km không hợp lệ');
+  }
+
+  // VALIDATE SỐ CHỖ
+  if (listingData.seats && listingData.seats < 1) {
+    throw new Error('Số chỗ ngồi phải lớn hơn 0');
+  }
+
+  console.log('Validated listing data:', listingData);
+
+  // INSERT VÀO DATABASE
+  const query = `
+    INSERT INTO listings (
+      seller_id, title, price_vnd, brand, model, year, mileage_km, 
+      gearbox, fuel, body_type, seats, description, seller_name, 
+      seller_phone, condition, origin, seller_address, district, 
+      youtube_url, location_text, status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+    RETURNING *
+  `;
+
   const values = [
     sellerId,
     listingData.title,
@@ -26,21 +189,88 @@ export async function createListing(sellerId: string, listingData: any) {
     listingData.brand,
     listingData.model,
     listingData.year,
-    listingData.mileage_km || null,
-    listingData.gearbox || null,
-    listingData.fuel || null,
-    listingData.body_type || null,
-    listingData.seats || null,
-    listingData.color_ext || null,
-    listingData.color_int || null,
-    listingData.location_text || null,
-    listingData.description || null
+    listingData.mileage_km,
+    listingData.gearbox,
+    listingData.fuel,
+    listingData.body_type,
+    listingData.seats,
+    listingData.description,
+    listingData.seller_name,
+    listingData.seller_phone,
+    listingData.condition,
+    listingData.origin,
+    listingData.seller_address,
+    listingData.district,
+    listingData.youtube_url,
+    listingData.location_text,
+    ListingStatus.PENDING
   ];
-  const placeholders = values.map((_, i) => `$${i + 2}`).join(', ');
-  const query = `INSERT INTO listings (seller_id, title, price_vnd, brand, model, year, mileage_km, gearbox, fuel, body_type, seats, color_ext, color_int, location_text, description) VALUES ($1, ${placeholders}) RETURNING *`;
-  const { rows: [newListing] } = await pool.query(query, values);
-  await logAudit(sellerId, 'listing.create', 'listing', newListing.id);
-  return newListing;
+
+  console.log('Executing query with values:', values);
+
+  try {
+    const { rows: [newListing] } = await pool.query(query, values);
+    
+    console.log('New listing created:', newListing);
+    
+    // UPLOAD ẢNH LÊN SUPABASE STORAGE
+    if (imageFiles && imageFiles.length > 0) {
+      console.log(`Starting upload of ${imageFiles.length} images to Supabase...`);
+      
+      for (let i = 0; i < imageFiles.length; i++) {
+        const imageFile = imageFiles[i];
+        const fileExt = imageFile.originalname.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExt}`;
+        const filePath = `listings/${newListing.id}/${fileName}`;
+
+        console.log(`Uploading image ${i+1} to Supabase:`, filePath);
+
+        try {
+          // Upload buffer lên Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from(process.env.SUPABASE_BUCKET!)
+            .upload(filePath, imageFile.buffer, {
+              contentType: imageFile.mimetype,
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error('Supabase upload error:', uploadError);
+            throw new Error(`Lỗi upload ảnh lên cloud: ${uploadError.message}`);
+          }
+
+          // Lấy public URL
+          const { data: publicUrlData } = supabase.storage
+            .from(process.env.SUPABASE_BUCKET!)
+            .getPublicUrl(filePath);
+
+          console.log('Image uploaded successfully:', publicUrlData.publicUrl);
+
+          // Lưu vào database
+          await pool.query(
+            'INSERT INTO listing_images (listing_id, position, original_name, public_url, file_key) VALUES ($1, $2, $3, $4, $5)',
+            [newListing.id, i, imageFile.originalname, publicUrlData.publicUrl, filePath]
+          );
+
+          console.log(`Image ${i+1} saved to database`);
+
+        } catch (error) {
+          console.error('Error in image upload process:', error);
+          throw new Error(`Lỗi xử lý ảnh: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      
+      console.log('All images uploaded successfully');
+    }
+
+    await logAudit(sellerId, 'listing.create', 'listing', newListing.id);
+    
+    return newListing;
+  } catch (error) {
+    console.error('Database error details:', error);
+    throw new Error('Lỗi khi lưu thông tin xe vào database: ' + (error instanceof Error ? error.message : String(error)));
+  }
 }
 
 export async function updateListingStatus(id: string, status: ListingStatus, approver_id?: string) {
@@ -69,7 +299,7 @@ export async function updateListing(id: string, updates: any, userId: string) {
 
 export async function getAllListingsAdmin() {
   const { rows } = await pool.query('SELECT * FROM listings ORDER BY created_at DESC');
-  await logAudit('system', 'listing.list', 'listing', undefined);  // Fix: undefined instead of null
+  await logAudit('system', 'listing.list', 'listing', undefined);
   return rows;
 }
 
@@ -92,7 +322,7 @@ export async function addFavorite(userId: string, listingId: string) {
 }
 
 export async function addComparison(userId: string, leftListingId: string, rightListingId: string) {
-  const id = require('uuid').v4();
+  const id = uuidv4();
   const { rows } = await pool.query(
     'INSERT INTO comparisons (id, user_id, left_listing_id, right_listing_id) VALUES ($1, $2, $3, $4) RETURNING *',
     [id, userId, leftListingId, rightListingId]

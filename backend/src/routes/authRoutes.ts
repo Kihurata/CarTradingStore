@@ -9,4 +9,4 @@ router.post('/logout', logout);  // Thêm
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
-export default router;
+export default router;  
