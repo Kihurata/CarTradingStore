@@ -5,10 +5,58 @@ import { api } from "@/lib/api"; // ← dùng instance axios/fetch của bạn
 type Option = { id: number; name: string };
 
 export default function CreateListingPage() {
+  // Tỉnh thành quận huyện
   const [provinces, setProvinces] = useState<Option[]>([]);
   const [districts, setDistricts] = useState<Option[]>([]);
   const [provinceId, setProvinceId] = useState<number | "">("");
   const [districtId, setDistrictId] = useState<number | "">("");
+
+  // --- state ảnh ---
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // --- config nhỏ ---
+  const MAX_FILES = 25;
+  const MAX_SIZE_MB = 2;
+
+  // --- xử lý chọn ảnh ---
+  const onSelectImages = (files: FileList | null) => {
+    if (!files) return;
+
+    const next: File[] = [...images];
+    const nextURLs: string[] = [...imagePreviews];
+
+    for (const f of Array.from(files)) {
+      const isImg = f.type.startsWith("image/");
+      const okSize = f.size <= MAX_SIZE_MB * 1024 * 1024;
+      if (!isImg || !okSize) continue; // bỏ file không hợp lệ
+
+      if (next.length >= MAX_FILES) break;
+      next.push(f);
+      nextURLs.push(URL.createObjectURL(f));
+    }
+
+    setImages(next);
+    setImagePreviews(nextURLs);
+  };
+
+  // --- xoá 1 ảnh ---
+  const removeImageAt = (idx: number) => {
+    const next = images.slice();
+    const nextURLs = imagePreviews.slice();
+    URL.revokeObjectURL(nextURLs[idx]);
+    next.splice(idx, 1);
+    nextURLs.splice(idx, 1);
+    setImages(next);
+    setImagePreviews(nextURLs);
+  };
+
+  // (tuỳ chọn) dọn URL khi unmount
+  useEffect(() => {
+    return () => imagePreviews.forEach((u) => URL.revokeObjectURL(u));
+  }, [imagePreviews]);
+
+
 
   useEffect(() => {
     (async () => {
@@ -59,6 +107,11 @@ export default function CreateListingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (images.length === 0) {
+      alert("Vui lòng thêm ít nhất 1 ảnh.");
+      return;
+    }
+    console.log("submit with images:", images, formData);
     console.log("Form submitted:", formData);
   };
 
@@ -432,10 +485,52 @@ export default function CreateListingPage() {
               <div className="bg-blue-50 rounded-lg shadow p-6 sticky top-24">
                 <h3 className="text-[16px] font-semibold text-blue-600 mb-4">ĐĂNG ẢNH & VIDEO XE</h3>
 
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-4">
-                  <div className="text-blue-500 text-4xl mb-2">+</div>
-                  <p className="text-sm text-gray-600">Thêm ảnh</p>
+                {/* Upload ảnh */}
+                <div className="mb-4">
+                  <label
+                    htmlFor="images"
+                    className="block border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:bg-blue-50"
+                  >
+                    <div className="text-blue-500 text-4xl mb-2">+</div>
+                    <p className="text-sm text-gray-600">
+                      Thêm ảnh (ít nhất 1, tối đa {MAX_FILES}, mỗi ảnh ≤ {MAX_SIZE_MB}MB)
+                    </p>
+                  </label>
+                  <input
+                    id="images"
+                    name="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => onSelectImages(e.target.files)}
+                  />
                 </div>
+
+                {/* Lỗi nếu chưa có ảnh */}
+                {images.length === 0 && (
+                  <p className="text-xs text-red-600 mb-3">⚠ Vui lòng thêm ít nhất 1 ảnh</p>
+                )}
+
+                {/* Preview ảnh đã chọn */}
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {imagePreviews.map((src, idx) => (
+                      <div key={src} className="relative group">
+                        <img src={src} alt={`Ảnh ${idx + 1}`} className="w-full h-24 object-cover rounded" />
+                        <button
+                          type="button"
+                          onClick={() => removeImageAt(idx)}
+                          className="absolute top-1 right-1 rounded bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100"
+                          aria-label="Xoá ảnh"
+                        >
+                          Xoá
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
 
                 <p className="text-xs text-red-500 mb-3">⚠ Vui lòng nhập dòng xe</p>
 

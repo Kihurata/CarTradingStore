@@ -1,7 +1,7 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/+$/, "");
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const fullUrl = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const fullUrl = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
   const res = await fetch(fullUrl, {
     credentials: "include",

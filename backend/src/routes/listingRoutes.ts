@@ -30,4 +30,7 @@ router.post("/:id/favorite", authenticateToken, listingController.addFavorite);
 router.post("/:id/comparison", authenticateToken, listingController.addComparison);
 router.post("/:id/report", authenticateToken, listingController.reportViolation);
 
+router.get("/locations/provinces", listingController.getProvinces);
+router.get("/locations/districts", listingController.getDistrictsByProvince);
+
 export default router;
