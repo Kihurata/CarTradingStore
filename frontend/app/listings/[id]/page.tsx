@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import ReportModal from "@/src/components/listings/ReportModal"; 
+import { useParams } from "next/navigation"; 
 
 interface ListingDetail {
   id: string;
@@ -23,15 +24,21 @@ interface ListingDetail {
   created_at?: string;
 }
 
-export default function ListingDetailPage({ params }: { params: { id: string } }) {
+export default function ListingDetailPage() {
   const [car, setCar] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [openReport, setOpenReport] = useState(false); 
 
+  // ✅ Lấy id từ useParams() (client-safe)
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string | undefined;
+
   useEffect(() => {
+    if (!id) return; // chưa có id thì không fetch
+
     const fetchData = async () => {
       try {
-        const res = await api<{ data: ListingDetail }>(`/listings/${params.id}`);
+        const res = await api<{ data: ListingDetail }>(`/listings/${id}`);
         setCar(res.data);
       } catch (err) {
         console.error("Failed to fetch listing:", err);
@@ -41,7 +48,7 @@ export default function ListingDetailPage({ params }: { params: { id: string } }
     };
 
     fetchData();
-  }, [params.id]);
+  }, [id]);
 
   if (loading) {
     return <div className="p-8 text-center text-gray-500">Đang tải dữ liệu...</div>;

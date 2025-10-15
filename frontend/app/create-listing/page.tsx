@@ -1,8 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api"; // ← dùng instance axios/fetch của bạn
+type Option = { id: number; name: string };
 
 export default function CreateListingPage() {
+  const [provinces, setProvinces] = useState<Option[]>([]);
+  const [districts, setDistricts] = useState<Option[]>([]);
+  const [provinceId, setProvinceId] = useState<number | "">("");
+  const [districtId, setDistrictId] = useState<number | "">("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api<{ data: Option[] }>("/locations/provinces");
+        setProvinces(res.data);
+      } catch (e) {
+        console.error("Không tải được danh sách tỉnh/thành", e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!provinceId) { setDistricts([]); setDistrictId(""); return; }
+    (async () => {
+      try {
+        const res = await api<{ data: Option[] }>(`/locations/districts?province_id=${provinceId}`);
+        setDistricts(res.data);
+        setDistrictId("");
+      } catch (e) {
+        console.error("Không tải được quận/huyện", e);
+      }
+    })();
+  }, [provinceId]);
+
   const [formData, setFormData] = useState({
     hangXe: "",
     dongXe: "",
@@ -23,11 +54,46 @@ export default function CreateListingPage() {
     diaChiNguoiBan: "",
     noiVanXe: "",
     quanHuyen: "",
+    videoUrl: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form submitted:", formData);
+  };
+
+  /* helper: kiểm tra URL hợp lệ */
+  const isValidUrl = (v: string) => {
+    if (!v) return false;
+    try {
+      new URL(v);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  /* 👇 helper: thêm https:// nếu thiếu khi blur */
+  const normalizeVideoUrlOnBlur = () => {
+    const v = formData.videoUrl?.trim();
+    if (!v) return;
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(v)) {
+      setFormData({ ...formData, videoUrl: `https://${v}` });
+    }
+  };
+   /* helper: lấy link nhúng YouTube nếu có */
+  const getYouTubeEmbed = (v: string) => {
+    try {
+      const u = new URL(v);
+      const isYouTube = u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be");
+      if (!isYouTube) return null;
+      let id = "";
+      if (u.hostname.includes("youtu.be")) id = u.pathname.slice(1);
+      else id = u.searchParams.get("v") || "";
+      if (!id) return null;
+      return `https://www.youtube.com/embed/${id}`;
+    } catch {
+        return null;
+    }
   };
 
   return (
@@ -80,38 +146,6 @@ export default function CreateListingPage() {
                     </select>
                     <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập dòng xe</p>
                   </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tình trạng<span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-8">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tinhTrang"
-                          value="xe-cu"
-                          checked={formData.tinhTrang === "xe-cu"}
-                          onChange={(e) => setFormData({ ...formData, tinhTrang: e.target.value })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Xe cũ</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tinhTrang"
-                          value="xe-moi"
-                          checked={formData.tinhTrang === "xe-moi"}
-                          onChange={(e) => setFormData({ ...formData, tinhTrang: e.target.value })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Xe mới</span>
-                      </label>
-                    </div>
-                    <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn tình trạng</p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Năm sản xuất<span className="text-red-500">*</span>
@@ -125,11 +159,7 @@ export default function CreateListingPage() {
                       required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Xuất xứ<span className="text-red-500">*</span>
-                    </label>
                     <div className="flex gap-8 mt-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -347,15 +377,15 @@ export default function CreateListingPage() {
                         Nơi bán xe<span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.noiVanXe}
-                        onChange={(e) => setFormData({ ...formData, noiVanXe: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+                        value={provinceId}
+                        onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : "")}
                         required
                       >
                         <option value="">Chọn Tỉnh/Thành</option>
-                        <option value="hanoi">Hà Nội</option>
-                        <option value="hochiminh">TP. Hồ Chí Minh</option>
-                        <option value="danang">Đà Nẵng</option>
+                        {provinces.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
                       </select>
                       <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn tỉnh/thành</p>
                     </div>
@@ -365,12 +395,16 @@ export default function CreateListingPage() {
                         Quận/Huyện<span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.quanHuyen}
-                        onChange={(e) => setFormData({ ...formData, quanHuyen: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+                        value={districtId}
+                        onChange={(e) => setDistrictId(e.target.value ? Number(e.target.value) : "")}
+                        disabled={!provinceId}
                         required
                       >
-                        <option value="">Chọn quận/huyện</option>
+                        <option value="">{provinceId ? "Chọn quận/huyện" : "Chọn Tỉnh/Thành trước"}</option>
+                        {districts.map(d => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
                       </select>
                       <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn quận/huyện</p>
                     </div>
@@ -413,10 +447,53 @@ export default function CreateListingPage() {
                 </div>
 
                 <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">Video giới thiệu sản phẩm</h4>
+                {/* --- Nhập link video + xem trước --- */}
+                <div className="mt-3 space-y-2">
+                  <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700">
+                    URL video (YouTube)
+                  </label>
+                  <input
+                    id="videoUrl"
+                    name="videoUrl"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-gray-400
+                                text-black placeholder:text-gray-400
+                                ${!formData.videoUrl || isValidUrl(formData.videoUrl) ? "border-gray-300" : "border-red-500"}`}
+                    value={formData.videoUrl}
+                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value.trim() })}
+                    onBlur={normalizeVideoUrlOnBlur}
+                    aria-invalid={!!formData.videoUrl && !isValidUrl(formData.videoUrl)}
+                  />
+
+                  <p className={`text-xs ${!formData.videoUrl || isValidUrl(formData.videoUrl) ? "text-gray-500" : "text-red-600"}`}>
+                    {!formData.videoUrl || isValidUrl(formData.videoUrl)
+                      ? "Ví dụ: https://youtube.com/watch?v=..."
+                      : "URL không hợp lệ"}
+                  </p>
+
+                  {/* Preview YouTube nếu hợp lệ */}
+                  {(() => {
+                    const embed = formData.videoUrl ? getYouTubeEmbed(formData.videoUrl) : null;
+                    if (!embed) return null;
+                    return (
+                      <div className="aspect-video w-full overflow-hidden rounded border">
+                        <iframe
+                          src={embed}
+                          title="Video giới thiệu"
+                          className="h-full w-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className="space-y-2 text-xs text-gray-600">
-                  <p>Gửi về <a href="#" className="text-blue-600 underline">https://www.youtube.com/watch?v</a></p>
-                  <p>* Chỉ chấp video của Youtube</p>
-                  <p>* Chịu trách nhiệm bản quyền nội dung</p>
+                  <p>Chèn link video giới thiệu sản phẩm từ Youtube nhằm tăng hiệu quả tin rao</p>
+                  <p>Chịu trách nhiệm bản quyền nội dung</p>
                 </div>
               </div>
             </div>

@@ -120,6 +120,28 @@ body {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    input,
+    select,
+    textarea {
+      @apply text-black;      /* chữ đen cho mọi field */
+    }
+    input::placeholder,
+    textarea::placeholder {
+      @apply text-gray-400;
+    }
+    input, textarea {
+      caret-color: black;
+    }
+    input[type="radio"],
+    input[type="checkbox"] {
+      @apply accent-black; /* dùng Tailwind accent-color */
+      accent-color: black; /* fallback thuần CSS */
+    }
+
+    /* Label mặc định màu đen để chữ cạnh radio/checkbox cũng đen */
+    label {
+      @apply text-black;
+    }
   }
   body {
     @apply bg-background text-foreground;

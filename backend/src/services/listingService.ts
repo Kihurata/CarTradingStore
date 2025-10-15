@@ -181,3 +181,22 @@ export async function reportViolation(listingId: string, reporterId: string, typ
   await logAudit(reporterId, 'report.create', 'listing', listingId, { type, note });
   return newReport;
 }
+
+// Lấy danh sách tỉnh/thành
+export async function listProvinces(): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM provinces ORDER BY name"
+  );
+  return rows;
+}
+
+// Lấy danh sách quận/huyện theo tỉnh
+export async function listDistrictsByProvince(
+  provinceId: number
+): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM districts WHERE province_id = $1 ORDER BY name",
+    [provinceId]
+  );
+  return rows;
+}

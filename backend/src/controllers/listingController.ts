@@ -133,3 +133,15 @@ export const editListing = async (req: Request, res: Response) => {
     res.status(400).json({ error: (err as Error).message });
   }
 };
+
+export const getProvinces = async (req: Request, res: Response) => {
+  const data = await listingService.listProvinces();
+  res.json({ data });
+};
+
+export const getDistrictsByProvince = async (req: Request, res: Response) => {
+  const provinceId = Number(req.query.province_id);
+  if (!provinceId) return res.status(400).json({ message: "province_id is required" });
+  const data = await listingService.listDistrictsByProvince(provinceId);
+  res.json({ data });
+};

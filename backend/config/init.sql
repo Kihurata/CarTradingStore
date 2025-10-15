@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash   TEXT NOT NULL,
   name            TEXT,
   phone           TEXT,
+  address         TEXT,
   is_admin        BOOLEAN NOT NULL DEFAULT FALSE,
   status          user_status NOT NULL DEFAULT 'active',
   last_active_at  TIMESTAMPTZ,
@@ -53,6 +54,23 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TRIGGER trg_users_updated
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- provinces (Tỉnh/Thành)
+CREATE TABLE IF NOT EXISTS provinces (
+  id   SMALLINT PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE
+);
+
+-- districts (Quận/Huyện)
+CREATE TABLE IF NOT EXISTS districts (
+  id          INTEGER PRIMARY KEY,
+  province_id SMALLINT NOT NULL REFERENCES provinces(id) ON DELETE RESTRICT,
+  name        TEXT NOT NULL,
+  slug        TEXT,
+  UNIQUE (province_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_districts_province ON districts(province_id);
 
 -- 4) LISTINGS (bài đăng)
 CREATE TABLE IF NOT EXISTS listings (
@@ -70,9 +88,16 @@ CREATE TABLE IF NOT EXISTS listings (
   seats           SMALLINT,
   color_ext       TEXT,
   color_int       TEXT,
-  location_text   TEXT,     -- tỉnh/thành - quận/huyện (gộp)
+  origin          TEXT,     -- nhập khẩu | trong nước | ...
+  
   description     TEXT,
   status          listing_status NOT NULL DEFAULT 'pending',
+  -- Địa chỉ chuẩn hoá
+  province_id      SMALLINT  REFERENCES provinces(id),
+  district_id      INTEGER   REFERENCES districts(id),
+  address_line     TEXT,    
+ -- Text gộp để hiển thị & search tự do (tự cập nhật bằng trigger)
+  location_text   TEXT,     
   views_count     INT NOT NULL DEFAULT 0,
   edits_count     INT NOT NULL DEFAULT 0,   -- phục vụ đánh giá hoạt động chỉnh sửa
   reports_count   INT NOT NULL DEFAULT 0,
@@ -86,9 +111,52 @@ CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price_vnd);
 CREATE INDEX IF NOT EXISTS idx_listings_brand ON listings(brand);
 CREATE INDEX IF NOT EXISTS idx_listings_year ON listings(year);
 CREATE INDEX IF NOT EXISTS idx_listings_seller ON listings(seller_id);
+CREATE INDEX IF NOT EXISTS idx_listings_region ON listings(province_id, district_id);
 CREATE TRIGGER trg_listings_updated
 BEFORE UPDATE ON listings
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Ràng buộc quận thuộc đúng tỉnh
+CREATE OR REPLACE FUNCTION check_listing_location()
+RETURNS TRIGGER AS $$
+DECLARE
+  d_province SMALLINT;
+BEGIN
+  IF NEW.district_id IS NOT NULL THEN
+    SELECT province_id INTO d_province FROM districts WHERE id = NEW.district_id;
+    IF d_province IS NULL OR (NEW.province_id IS NOT NULL AND NEW.province_id <> d_province) THEN
+      RAISE EXCEPTION 'district_id % không thuộc province_id %', NEW.district_id, NEW.province_id;
+    END IF;
+    NEW.province_id := COALESCE(NEW.province_id, d_province);
+  END IF;
+
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_listings_location ON listings;
+CREATE TRIGGER trg_listings_location
+BEFORE INSERT OR UPDATE ON listings
+FOR EACH ROW EXECUTE FUNCTION check_listing_location();
+
+-- Tự build location_text từ province/district
+CREATE OR REPLACE FUNCTION build_location_text()
+RETURNS TRIGGER AS $$
+DECLARE
+  p TEXT; d TEXT;
+BEGIN
+  SELECT name INTO p FROM provinces WHERE id = NEW.province_id;
+  SELECT name INTO d FROM districts WHERE id = NEW.district_id;
+
+  NEW.location_text :=
+    TRIM(BOTH ' ' FROM CONCAT_WS(' - ', NULLIF(p,''), NULLIF(d,'')));
+
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_listings_location_text ON listings;
+CREATE TRIGGER trg_listings_location_text
+BEFORE INSERT OR UPDATE OF province_id, district_id ON listings
+FOR EACH ROW EXECUTE FUNCTION build_location_text();
 
 -- 5) IMAGES (ảnh bài đăng)
 CREATE TABLE IF NOT EXISTS listing_images (
