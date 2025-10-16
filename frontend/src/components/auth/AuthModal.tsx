@@ -160,6 +160,10 @@ export function AuthModal({
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
+
+        // ✅ Thêm: Lưu token vào cookie để middleware backend đọc (match req.cookies.jwt)
+        document.cookie = `jwt=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure=false`; // 7 ngày, dev: secure=false
+        console.log("New JWT cookie set from AuthModal:", token.substring(0, 20) + "...");
       }
 
       if (onAuthSuccess) {
@@ -177,10 +181,15 @@ export function AuthModal({
     } catch {
       alert(err.message || "Đăng nhập/Đăng ký thất bại!");
     }
+<<<<<<< Updated upstream
+=======
+    alert(msg);
+>>>>>>> Stashed changes
   } finally {
     setLoading(false);
   }
 };
+<<<<<<< Updated upstream
 =======
     } catch (err: unknown) {
       console.error("Auth error:", err);
@@ -208,6 +217,8 @@ export function AuthModal({
     setLoading(false);
     onClose();
   };
+=======
+>>>>>>> Stashed changes
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

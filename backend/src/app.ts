@@ -7,6 +7,7 @@ import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import pool from "./config/database";
 import logger from "./utils/logger";
+import apiProxyRoutes from "./routes/apiProxyRoutes";
 
 const app: Application = express();
 
@@ -14,14 +15,12 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000", // frontend local
-      "http://frontend:3000",  // frontend trong docker
-    ],
-    credentials: true, // cho phép gửi cookie và auth header
+    origin: ["http://localhost:3000", "http://frontend:3000"],
+    credentials: true,
   })
 );
 
+<<<<<<< Updated upstream
 // Cho phép parse JSON & form
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,6 +40,12 @@ app.use("/api/listings", listingRoutes);
  * Route kiểm tra hệ thống
  * -----------------------------
  */
+=======
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check trước
+>>>>>>> Stashed changes
 app.get("/health", async (req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT NOW()");
@@ -58,6 +63,17 @@ app.get("/health", async (req: Request, res: Response) => {
 });
 
 
+<<<<<<< Updated upstream
+=======
+// Các route nội bộ (chạy trực tiếp backend thật)
+app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/listings", listingRoutes);
+
+app.use("/api", apiProxyRoutes);
+// Global error handler
+>>>>>>> Stashed changes
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   logger?.error(`Global error: ${err.message}`, {
     stack: err.stack,

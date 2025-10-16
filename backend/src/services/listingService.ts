@@ -1,8 +1,13 @@
+<<<<<<< Updated upstream
 // backend/src/services/listingService.ts
+=======
+// src/services/listingService.ts
+>>>>>>> Stashed changes
 import pool from '../config/database';
 import { logAudit } from './auditService';
 <<<<<<< Updated upstream
 import { ListingStatus } from '../models/listing';
+<<<<<<< Updated upstream
 
 
 export async function getAllListings(status?: string, page: number = 1, limit: number = 10) {
@@ -19,6 +24,11 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_KEY!
 );
+=======
+import { Listing } from '../models/listing';
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "../utils/supabase";
+>>>>>>> Stashed changes
 
 export async function getAllListings(
   status: string | undefined, 
@@ -104,6 +114,7 @@ export async function getListingById(id: string) {
   return rows[0];
 }
 
+<<<<<<< Updated upstream
 export async function createListing(sellerId: string, rawData: any, imageFiles: Express.Multer.File[] = []) {
   // VALIDATE SELLER_ID
   if (!sellerId) {
@@ -270,6 +281,108 @@ export async function createListing(sellerId: string, rawData: any, imageFiles: 
   } catch (error) {
     console.error('Database error details:', error);
     throw new Error('Lỗi khi lưu thông tin xe vào database: ' + (error instanceof Error ? error.message : String(error)));
+=======
+export async function createListing(data: {
+  seller_id: string;
+  title: string;
+  price_vnd: number;
+  brand: string;
+  model: string;
+  year?: number;
+  gearbox?: string;
+  fuel?: string;
+  body_type?: string;
+  seats?: number;
+  origin?: string;
+  description?: string;
+  province_id?: number;
+  district_id?: number;
+  address_line?: string;
+  images?: Express.Multer.File[];
+}) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // ✅ Thêm validation trước INSERT (dự phòng nếu controller bỏ sót)
+    if (!data.title || data.title.trim() === "") {
+      throw new Error("Title is required");
+    }
+    if (data.price_vnd <= 0) {
+      throw new Error("Price must be greater than 0");
+    }
+
+    // 1. Tạo bản ghi listing
+    const listingId = uuidv4();
+    await client.query(
+      `
+      INSERT INTO listings (
+        id, seller_id, title, price_vnd, brand, model, year, gearbox,
+        fuel, body_type, seats, origin, description,
+        province_id, district_id, address_line
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      `,
+      [
+        listingId,
+        data.seller_id,
+        data.title,
+        data.price_vnd,
+        data.brand || null,
+        data.model || null,
+        data.year || null,
+        data.gearbox || null,
+        data.fuel || null,
+        data.body_type || null,
+        data.seats || null,
+        data.origin || null,
+        data.description || null,
+        data.province_id || null,
+        data.district_id || null,
+        data.address_line || null,
+      ]
+    );
+
+    // 2. Upload images nếu có
+    if (data.images && data.images.length > 0) {
+      const uploadedUrls: string[] = [];
+      for (const file of data.images) {
+        const fileExt = file.originalname.split(".").pop();
+        const fileName = `pending/${uuidv4()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .getPublicUrl(fileName);
+
+        const imageUrl = publicData.publicUrl;
+        uploadedUrls.push(imageUrl);
+
+        await client.query(
+          `INSERT INTO listing_images (listing_id, file_key, public_url, position)
+           VALUES ($1,$2,$3,$4)`,
+          [listingId, fileName, imageUrl, uploadedUrls.length]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    await logAudit(data.seller_id, 'listing.create', 'listing', listingId);
+    return { id: listingId };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("createListing error:", err);
+    throw err;
+  } finally {
+    client.release();
+>>>>>>> Stashed changes
   }
 }
 
@@ -340,3 +453,24 @@ export async function reportViolation(listingId: string, reporterId: string, typ
   return newReport;
 }
 
+<<<<<<< Updated upstream
+=======
+// Lấy danh sách tỉnh/thành
+export async function listProvinces(): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM provinces ORDER BY name"
+  );
+  return rows;
+}
+
+// Lấy danh sách quận/huyện theo tỉnh
+export async function listDistrictsByProvince(
+  provinceId: number
+): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM districts WHERE province_id = $1 ORDER BY name",
+    [provinceId]
+  );
+  return rows;
+}
+>>>>>>> Stashed changes

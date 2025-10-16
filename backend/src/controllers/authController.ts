@@ -6,9 +6,12 @@ import pool from "../config/database";
 import { sendResetEmail } from "../utils/email";
 import logger from "../utils/logger";
 
+<<<<<<< Updated upstream
 // Import uuid v4 đúng chuẩn TypeScript + CommonJS
 import { v4 as uuidv4 } from "uuid";
 
+=======
+>>>>>>> Stashed changes
 /**
  * -----------------------------
  * Đăng ký tài khoản người dùng
@@ -35,6 +38,7 @@ export const register = async (req: Request, res: Response) => {
       [id, email, passwordHash, derivedName, phone]
     );
 
+<<<<<<< Updated upstream
     const token = jwt.sign(
       { id: rows[0].id, is_admin: false },
       process.env.JWT_SECRET!,
@@ -46,6 +50,30 @@ export const register = async (req: Request, res: Response) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
+=======
+    // 5) Tạo token với payload khớp middleware (id thay vì sub, thêm is_admin: false)
+    const token = jwt.sign(
+      { id: user.id, email: user.email, is_admin: false }, // Sửa payload để match JwtPayload
+      process.env.JWT_SECRET || "dev_secret_change_me",
+      { expiresIn: "7d" }
+    );
+
+    // Set cookie tự động (httpOnly: true để an toàn, maxAge match exp)
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+    });
+
+    return res.status(201).json({ token, user });
+  } catch (err: any) {
+    // Bắt lỗi unique_violation của Postgres (mã 23505) nếu rơi vào race condition
+    const code = err?.code || err?.original?.code;
+    if (code === "23505") {
+      return res.status(409).json({ error: "Email đã được sử dụng" });
+    }
+>>>>>>> Stashed changes
 
     const { password_hash, ...safeUser } = rows[0];
     safeUser.username = safeUser.name;
@@ -86,6 +114,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // ✅ Tạo JWT token
     const token = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
@@ -110,6 +139,23 @@ export const login = async (req: Request, res: Response) => {
   process.env.JWT_SECRET || process.env.SECRET!,
   { expiresIn: '24h' }
 );
+=======
+    // Tạo JWT với payload khớp middleware (id thay vì sub, thêm is_admin: false)
+    const token = jwt.sign(
+      { id: user.id, email: user.email, is_admin: false }, // Sửa payload để match JwtPayload
+      process.env.JWT_SECRET || "dev_secret_change_me",
+      { expiresIn: "7d" }
+    );
+
+    // Set cookie tự động (httpOnly: true để an toàn, maxAge match exp)
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+    });
+
+>>>>>>> Stashed changes
     // Chuẩn hoá dữ liệu trả về cho frontend
     return res.json({
       token,
@@ -137,7 +183,6 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({ error: (err as Error).message });
   }
 };
-
 
 /**
  * -----------------------------
@@ -189,6 +234,10 @@ export const resetPassword = async (req: Request, res: Response) => {
  * -----------------------------
  */
 export const logout = async (req: Request, res: Response) => {
-  res.clearCookie("jwt");
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   res.json({ success: true, message: "Đăng xuất thành công" });
 };

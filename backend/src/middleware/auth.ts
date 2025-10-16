@@ -30,6 +30,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
+<<<<<<< Updated upstream
     const secret = process.env.JWT_SECRET || process.env.SECRET;
     if (!secret) {
       console.error('JWT secret not configured');
@@ -44,6 +45,16 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   } catch (error) {
     console.error('Token verification failed:', error);
     return res.status(403).json({ error: 'Invalid or expired token' });
+=======
+    // ✅ Sửa: Sử dụng fallback secret giống authController để tránh mismatch
+    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const decoded = jwt.verify(token, secret) as JwtPayload;
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.error("JWT verify error:", err); // Thêm log để debug nếu cần
+    res.status(400).json({ error: 'Invalid token' });
+>>>>>>> Stashed changes
   }
 };
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
