@@ -1,11 +1,87 @@
 "use client";
 
-import { useState } from "react";
-import { createListing } from "@/src/services/listingService";
-
-import { Footer } from "@/src/components/layout/Footer";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api"; // ← dùng instance axios/fetch của bạn
+type Option = { id: number; name: string };
 
 export default function CreateListingPage() {
+  // Tỉnh thành quận huyện
+  const [provinces, setProvinces] = useState<Option[]>([]);
+  const [districts, setDistricts] = useState<Option[]>([]);
+  const [provinceId, setProvinceId] = useState<number | "">("");
+  const [districtId, setDistrictId] = useState<number | "">("");
+
+  // --- state ảnh ---
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+
+  // --- config nhỏ ---
+  const MAX_FILES = 25;
+  const MAX_SIZE_MB = 2;
+
+  // --- xử lý chọn ảnh ---
+  const onSelectImages = (files: FileList | null) => {
+    if (!files) return;
+
+    const next: File[] = [...images];
+    const nextURLs: string[] = [...imagePreviews];
+
+    for (const f of Array.from(files)) {
+      const isImg = f.type.startsWith("image/");
+      const okSize = f.size <= MAX_SIZE_MB * 1024 * 1024;
+      if (!isImg || !okSize) continue; // bỏ file không hợp lệ
+
+      if (next.length >= MAX_FILES) break;
+      next.push(f);
+      nextURLs.push(URL.createObjectURL(f));
+    }
+
+    setImages(next);
+    setImagePreviews(nextURLs);
+  };
+
+  // --- xoá 1 ảnh ---
+  const removeImageAt = (idx: number) => {
+    const next = images.slice();
+    const nextURLs = imagePreviews.slice();
+    URL.revokeObjectURL(nextURLs[idx]);
+    next.splice(idx, 1);
+    nextURLs.splice(idx, 1);
+    setImages(next);
+    setImagePreviews(nextURLs);
+  };
+
+  // (tuỳ chọn) dọn URL khi unmount
+  useEffect(() => {
+    return () => imagePreviews.forEach((u) => URL.revokeObjectURL(u));
+  }, [imagePreviews]);
+
+
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api<{ data: Option[] }>("/locations/provinces");
+        setProvinces(res.data);
+      } catch (e) {
+        console.error("Không tải được danh sách tỉnh/thành", e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!provinceId) { setDistricts([]); setDistrictId(""); return; }
+    (async () => {
+      try {
+        const res = await api<{ data: Option[] }>(`/locations/districts?province_id=${provinceId}`);
+        setDistricts(res.data);
+        setDistrictId("");
+      } catch (e) {
+        console.error("Không tải được quận/huyện", e);
+      }
+    })();
+  }, [provinceId]);
+
   const [formData, setFormData] = useState({
     hangXe: "",
     dongXe: "",
@@ -26,50 +102,9 @@ export default function CreateListingPage() {
     diaChiNguoiBan: "",
     noiVanXe: "",
     quanHuyen: "",
-    youtubeUrl: "",
-  });
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-
-<<<<<<< Updated upstream
-const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-  const files = Array.from(event.target.files || []);
-  const newImages = [...selectedImages, ...files];
-  
-  // Validate số lượng ảnh
-  if (newImages.length > 25) {
-    alert("Tối đa 25 hình ảnh");
-    return;
-  }
-
-  // Validate dung lượng và tạo preview
-  const newPreviews: string[] = [];
-  files.forEach((file) => {
-    if (file.size > 2048 * 1024) {
-      alert(`Hình ảnh ${file.name} vượt quá dung lượng 2048KB`);
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        newPreviews.push(e.target.result as string);
-        if (newPreviews.length === files.length) {
-          setImagePreviews([...imagePreviews, ...newPreviews]);
-        }
-      }
-    };
-    reader.readAsDataURL(file);
+    videoUrl: "",
   });
 
-  setSelectedImages(newImages);
-};
-
-  const removeImage = (index) => {
-    setSelectedImages(selectedImages.filter((_, i) => i !== index));
-    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
-  };
-=======
   
 
 const handleSubmit = async (e: React.FormEvent) => {
@@ -132,87 +167,45 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 
 
->>>>>>> Stashed changes
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // Kiểm tra token trước khi submit
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Vui lòng đăng nhập trước khi đăng tin");
-      window.location.href = '/login';
-      return;
+  /* helper: kiểm tra URL hợp lệ */
+  const isValidUrl = (v: string) => {
+    if (!v) return false;
+    try {
+      new URL(v);
+      return true;
+    } catch {
+      return false;
     }
-  }
-
-  // Validate số lượng ảnh
-  if (selectedImages.length < 3) {
-    alert("Vui lòng đăng ít nhất 03 hình ảnh");
-    return;
-  }
-
-  // Validate giá bán
-  const priceValue = parseInt(formData.giaBan.replace(/\D/g, ''));
-  if (!priceValue || priceValue <= 0) {
-    alert("Vui lòng nhập giá bán hợp lệ");
-    return;
-  }
-
-  // Validate các trường bắt buộc
-  const requiredFields = [
-    'hangXe', 'dongXe', 'tinhTrang', 'xuatXu', 'namSanXuat',
-    'giaBan', 'tieuDe', 'moTa', 'tenNguoiBan', 'soDienThoai',
-    'diaChiNguoiBan', 'noiVanXe', 'quanHuyen'
-  ];
-
-  const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
-  if (missingFields.length > 0) {
-    alert(`Vui lòng điền đầy đủ các trường bắt buộc: ${missingFields.join(', ')}`);
-    return;
-  }
-
-  try {
-    console.log("Submitting form data:", formData);
-    
-    // Gọi API create listing với cả dữ liệu và ảnh
-    const result = await createListing(formData, selectedImages);
-    
-    console.log("Listing created successfully:", result);
-    alert("Đăng tin thành công! Tin của bạn đang chờ duyệt.");
-    
-    // Reset form sau khi thành công
-    setFormData({
-      hangXe: "", dongXe: "", dongXeDung: "", tinhTrang: "xe-cu", 
-      xuatXu: "trong-nuoc", namSanXuat: "", dienKy: "", hopSo: "so-tu-dong", 
-      nhienLieu: "xang", kieuDang: "", soChoNgoi: "", giaBan: "", 
-      tieuDe: "", moTa: "", tenNguoiBan: "", soDienThoai: "", 
-      diaChiNguoiBan: "", noiVanXe: "", quanHuyen: "", youtubeUrl: "",
-    });
-    setSelectedImages([]);
-    setImagePreviews([]);
-    
-  } catch (error) {
-    console.error("Error creating listing:", error);
-    const errorMessage = error instanceof Error ? error.message : "Lỗi không xác định khi đăng tin";
-    
-    if (errorMessage.includes('đăng nhập') || errorMessage.includes('token')) {
-      // Xóa token và redirect đến login
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-      alert(errorMessage);
-      window.location.href = '/login';
-    } else {
-      alert(`Lỗi: ${errorMessage}`);
+  };
+  /* 👇 helper: thêm https:// nếu thiếu khi blur */
+  const normalizeVideoUrlOnBlur = () => {
+    const v = formData.videoUrl?.trim();
+    if (!v) return;
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(v)) {
+      setFormData({ ...formData, videoUrl: `https://${v}` });
     }
-  }
-};
+  };
+   /* helper: lấy link nhúng YouTube nếu có */
+  const getYouTubeEmbed = (v: string) => {
+    try {
+      const u = new URL(v);
+      const isYouTube = u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be");
+      if (!isYouTube) return null;
+      let id = "";
+      if (u.hostname.includes("youtu.be")) id = u.pathname.slice(1);
+      else id = u.searchParams.get("v") || "";
+      if (!id) return null;
+      return `https://www.youtube.com/embed/${id}`;
+    } catch {
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+
+
       <main className="bg-white">
         <div className="mx-auto max-w-7xl px-6">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -249,16 +242,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Dòng xe<span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Nhập dòng xe (VD: Civic, Camry...)"
+                    <select
                       value={formData.dongXe}
                       onChange={(e) => setFormData({ ...formData, dongXe: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
-<<<<<<< Updated upstream
-                    />
-=======
                     >
                       <option value="">Chọn dòng xe</option>
                       <option value="Sedan">Sedan</option>
@@ -266,41 +254,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                       <option value="Hatchback">Hatchback</option>
                       <option value="Coupe">Coupe</option>
                     </select>
->>>>>>> Stashed changes
                     <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập dòng xe</p>
                   </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tình trạng<span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-8">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tinhTrang"
-                          value="xe-cu"
-                          checked={formData.tinhTrang === "xe-cu"}
-                          onChange={(e) => setFormData({ ...formData, tinhTrang: e.target.value })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Xe cũ</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tinhTrang"
-                          value="xe-moi"
-                          checked={formData.tinhTrang === "xe-moi"}
-                          onChange={(e) => setFormData({ ...formData, tinhTrang: e.target.value })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm">Xe mới</span>
-                      </label>
-                    </div>
-                    <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn tình trạng</p>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Năm sản xuất<span className="text-red-500">*</span>
@@ -314,11 +269,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                       required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Xuất xứ<span className="text-red-500">*</span>
-                    </label>
                     <div className="flex gap-8 mt-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -536,13 +487,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                         Nơi bán xe<span className="text-red-500">*</span>
                       </label>
                       <select
-<<<<<<< Updated upstream
-                        value={formData.noiVanXe}
-                        onChange={(e) => setFormData({ ...formData, noiVanXe: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-                        required
-                      >
-=======
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                             value={provinceId}
                             onChange={(e) => {
@@ -555,11 +499,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                             }}
                             required
                           >
->>>>>>> Stashed changes
                         <option value="">Chọn Tỉnh/Thành</option>
-                        <option value="hanoi">Hà Nội</option>
-                        <option value="hochiminh">TP. Hồ Chí Minh</option>
-                        <option value="danang">Đà Nẵng</option>
+                        {provinces.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
                       </select>
                       <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn tỉnh/thành</p>
                     </div>
@@ -568,17 +511,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Quận/Huyện<span className="text-red-500">*</span>
                       </label>
-<<<<<<< Updated upstream
-                      <input
-                        type="text"
-                        placeholder="Nhập quận/huyện (VD: Quận 1, Bình Thạnh...)"
-                        value={formData.quanHuyen}
-                        onChange={(e) => setFormData({ ...formData, quanHuyen: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-                        required
-                      />
-                      <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập quận/huyện</p>
-=======
                           <select
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                             value={districtId}
@@ -600,7 +532,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                         ))}
                       </select>
                       <p className="text-xs text-red-500 mt-1">⚠ Vui lòng chọn quận/huyện</p>
->>>>>>> Stashed changes
                     </div>
                   </div>
                 </div>
@@ -626,62 +557,116 @@ const handleSubmit = async (e: React.FormEvent) => {
               <div className="bg-blue-50 rounded-lg shadow p-6 sticky top-24">
                 <h3 className="text-[16px] font-semibold text-blue-600 mb-4">ĐĂNG ẢNH & VIDEO XE</h3>
 
-                <div className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center mb-4 cursor-pointer" onClick={() => document.getElementById('image-upload').click()}>
-                  <div className="text-blue-500 text-4xl mb-2">+</div>
-                  <p className="text-sm text-gray-600">Thêm ảnh</p>
+                {/* Upload ảnh */}
+                <div className="mb-4">
+                  <label
+                    htmlFor="images"
+                    className="block border-2 border-dashed border-blue-300 rounded-lg p-8 text-center cursor-pointer hover:bg-blue-50"
+                  >
+                    <div className="text-blue-500 text-4xl mb-2">+</div>
+                    <p className="text-sm text-gray-600">
+                      Thêm ảnh (ít nhất 1, tối đa {MAX_FILES}, mỗi ảnh ≤ {MAX_SIZE_MB}MB)
+                    </p>
+                  </label>
+                  <input
+                    id="images"
+                    name="images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => onSelectImages(e.target.files)}
+                  />
                 </div>
-                <input
-                  id="image-upload"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
 
+                {/* Lỗi nếu chưa có ảnh */}
+                {images.length === 0 && (
+                  <p className="text-xs text-red-600 mb-3">⚠ Vui lòng thêm ít nhất 1 ảnh</p>
+                )}
+
+                {/* Preview ảnh đã chọn */}
                 {imagePreviews.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mb-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
-                        <img src={preview} alt={`Preview ${index}`} className="w-full h-20 object-cover rounded" />
+                    {imagePreviews.map((src, idx) => (
+                      <div key={src} className="relative group">
+                        <img src={src} alt={`Ảnh ${idx + 1}`} className="w-full h-24 object-cover rounded" />
                         <button
                           type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          onClick={() => removeImageAt(idx)}
+                          className="absolute top-1 right-1 rounded bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100"
+                          aria-label="Xoá ảnh"
                         >
-                          ×
+                          Xoá
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
 
+
+                <p className="text-xs text-red-500 mb-3">⚠ Vui lòng nhập dòng xe</p>
+
                 <div className="bg-white rounded p-3 text-xs text-gray-600 space-y-2">
                   <p>* Đăng ít nhất 03 hình và tối đa 25 hình nội đô ngoại thất xe</p>
                   <p>* Dung lượng mỗi hình tối đa 2048KB</p>
                   <p>* Hình ảnh phù hợp được hệ thống cho tăng tối ưu để bán xe nhanh hơn, tiếp cận khách hàng dễ dàng hơn</p>
-                  <p>* Vui lòng không trùng lặp với các website khác</p>
+                  <p>* Vui lòng không trùng lặp tử có website</p>
                 </div>
 
                 <h4 className="text-sm font-semibold text-gray-700 mt-4 mb-2">Video giới thiệu sản phẩm</h4>
-                <input
-                  type="url"
-                  placeholder="Dán link YouTube (VD: https://www.youtube.com/watch?v=...)"
-                  value={formData.youtubeUrl}
-                  onChange={(e) => setFormData({ ...formData, youtubeUrl: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 mb-2"
-                />
+                {/* --- Nhập link video + xem trước --- */}
+                <div className="mt-3 space-y-2">
+                  <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700">
+                    URL video (YouTube)
+                  </label>
+                  <input
+                    id="videoUrl"
+                    name="videoUrl"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-gray-400
+                                text-black placeholder:text-gray-400
+                                ${!formData.videoUrl || isValidUrl(formData.videoUrl) ? "border-gray-300" : "border-red-500"}`}
+                    value={formData.videoUrl}
+                    onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value.trim() })}
+                    onBlur={normalizeVideoUrlOnBlur}
+                    aria-invalid={!!formData.videoUrl && !isValidUrl(formData.videoUrl)}
+                  />
+
+                  <p className={`text-xs ${!formData.videoUrl || isValidUrl(formData.videoUrl) ? "text-gray-500" : "text-red-600"}`}>
+                    {!formData.videoUrl || isValidUrl(formData.videoUrl)
+                      ? "Ví dụ: https://youtube.com/watch?v=..."
+                      : "URL không hợp lệ"}
+                  </p>
+
+                  {/* Preview YouTube nếu hợp lệ */}
+                  {(() => {
+                    const embed = formData.videoUrl ? getYouTubeEmbed(formData.videoUrl) : null;
+                    if (!embed) return null;
+                    return (
+                      <div className="aspect-video w-full overflow-hidden rounded border">
+                        <iframe
+                          src={embed}
+                          title="Video giới thiệu"
+                          className="h-full w-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div className="space-y-2 text-xs text-gray-600">
-                  <p>* Chỉ chấp nhận video của Youtube</p>
-                  <p>* Chịu trách nhiệm bản quyền nội dung</p>
+                  <p>Chèn link video giới thiệu sản phẩm từ Youtube nhằm tăng hiệu quả tin rao</p>
+                  <p>Chịu trách nhiệm bản quyền nội dung</p>
                 </div>
               </div>
             </div>
           </form>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }

@@ -1,36 +1,14 @@
-// frontend/src/types/listing.ts
-export interface CreateListingRequest {
-  // Thông tin xe
-  hangXe: string;
-  dongXe: string;
-  dongXeDung?: string;
-  tinhTrang: string;
-  xuatXu: string;
-  namSanXuat: string;
-  dienKy?: string;
-  hopSo: string;
-  nhienLieu: string;
-  kieuDang?: string;
-  soChoNgoi?: string;
-  giaBan: string;
-  
-  // Mô tả
-  tieuDe: string;
-  moTa: string;
-  
-  // Thông tin người bán
-  tenNguoiBan: string;
-  soDienThoai: string;
-  diaChiNguoiBan: string;
-  noiVanXe: string;
-  quanHuyen: string;
-  
-  // Media
-  youtubeUrl?: string;
+export enum ListingStatus {
+  DRAFT = "draft",
+  PENDING = "pending",
+  APPROVED = "approved",
+  HIDDEN = "hidden",
+  SOLD = "sold",
 }
 
 export interface Listing {
   id: string;
+  seller_id: string;
   title: string;
   price_vnd: number;
   brand: string;
@@ -41,19 +19,19 @@ export interface Listing {
   fuel?: string;
   body_type?: string;
   seats?: number;
-  description?: string;
-  status: string;
-  created_at: string;
-  
-  // Các trường mới
-  seller_name: string;
-  seller_phone: string;
-  condition: string;
-  origin: string;
-  seller_address: string;
-  district: string;
-  youtube_url?: string;
+  color_ext?: string;
+  color_int?: string;
   location_text?: string;
+  description?: string;
+  status: ListingStatus;
+  views_count: number;
+  edits_count: number;
+  reports_count: number;
+  approved_at?: string | null; // backend có thể trả về ISO string
+  approved_by?: string | null;
+  created_at: string;
+  updated_at: string;
   thumbnail_url?: string;
-  image_urls?: string[];
+  seller_name?: string;
+  seller_phone?: string;
 }

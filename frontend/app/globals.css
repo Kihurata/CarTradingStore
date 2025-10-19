@@ -4,7 +4,7 @@
 
 :root {
   --background: oklch(1 0 0);
-  --foreground: oklch(0.13 0.028 261.692);
+  --foreground: oklch(1 0 0);
   --radius: 0.625rem;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.13 0.028 261.692);
@@ -20,7 +20,7 @@
   --accent-foreground: oklch(0.21 0.034 264.665);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.928 0.006 264.531);
-  --input: oklch(0.928 0.006 264.531);
+  --input: oklch(17.304% 0.00002 271.152);
   --ring: oklch(0.707 0.022 261.325);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -77,13 +77,6 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -127,6 +120,28 @@ body {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    input,
+    select,
+    textarea {
+      @apply text-black;      /* chữ đen cho mọi field */
+    }
+    input::placeholder,
+    textarea::placeholder {
+      @apply text-gray-400;
+    }
+    input, textarea {
+      caret-color: black;
+    }
+    input[type="radio"],
+    input[type="checkbox"] {
+      @apply accent-black; /* dùng Tailwind accent-color */
+      accent-color: black; /* fallback thuần CSS */
+    }
+
+    /* Label mặc định màu đen để chữ cạnh radio/checkbox cũng đen */
+    label {
+      @apply text-black;
+    }
   }
   body {
     @apply bg-background text-foreground;

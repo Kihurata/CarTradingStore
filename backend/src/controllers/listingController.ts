@@ -5,30 +5,27 @@ import { ListingStatus } from '../models/listing';
 
 export const getAllListings = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    const { status, page = '1', limit = '10' } = req.query;
-    const listings = await listingService.getAllListings(status as string, parseInt(page as string), parseInt(limit as string));
-    res.json({ data: listings });
-=======
-=======
->>>>>>> Stashed changes
     const { status, page = "1", limit = "10", min_price, max_price, body_type } = req.query;
     const p = parseInt(page as string, 10);
     const l = parseInt(limit as string, 10);
+
     const filters = {
       min_price: min_price ? Number(min_price) : undefined,
       max_price: max_price ? Number(max_price) : undefined,
       body_type: (body_type as string) || undefined,
     };
+
     const { items, total } = await listingService.getAllListings(
       status as string | undefined,
       p,
       l,
       filters
     );
-    res.json({ data: items, meta: { page: p, limit: l, total, totalPages: Math.ceil(total / l) }, });
->>>>>>> Stashed changes
+
+    res.json({
+      data: items,
+      meta: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
@@ -36,51 +33,22 @@ export const getAllListings = async (req: Request, res: Response) => {
 
 export const getListing = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    const { id } = req.params;
-=======
     const id = req.params.id;
->>>>>>> Stashed changes
     const listing = await listingService.getListingById(id);
-    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+
+    if (!listing) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
+
     res.json({ data: listing });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: (err as Error).message });
   }
 };
 
 export const createListing = async (req: Request, res: Response) => {
   try {
-<<<<<<< Updated upstream
-    console.log('=== CREATE LISTING REQUEST ===');
-    console.log('Request user:', req.user);
-    console.log('Request body:', req.body);
-    console.log('Files count:', (req.files as Express.Multer.File[])?.length || 0);
-
-    // Kiểm tra user authentication
-    if (!req.user || !req.user.id) {
-      console.error('No user ID in request');
-      return res.status(401).json({ error: 'User authentication required' });
-    }
-
-    const sellerId = req.user.id;
-    const listingData = req.body;
-    
-    // Nhận files từ multer
-    const files = (req.files as Express.Multer.File[]) || [];
-
-    console.log('Seller ID:', sellerId);
-    console.log('Listing data:', listingData);
-
-    const listing = await listingService.createListing(sellerId, listingData, files);
-    
-    console.log('Listing created successfully:', listing);
-    res.status(201).json({ data: listing });
-    
-  } catch (err) {
-    console.error('Create listing error:', err);
-    res.status(400).json({ error: (err as Error).message });
-=======
     const sellerId = (req as any).user?.id || req.body.seller_id;
 
     // ✅ Sửa: Map từ English keys của FormData (frontend append "title", "brand", etc.)
@@ -119,7 +87,6 @@ export const createListing = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("❌ createListing controller error:", err);
     res.status(500).json({ error: "Internal server error" });
->>>>>>> Stashed changes
   }
 };
 
@@ -200,8 +167,6 @@ export const editListing = async (req: Request, res: Response) => {
   }
 };
 
-<<<<<<< Updated upstream
-=======
 export const getProvinces = async (req: Request, res: Response) => {
   const data = await listingService.listProvinces();
   res.json({ data });
@@ -213,4 +178,3 @@ export const getDistrictsByProvince = async (req: Request, res: Response) => {
   const data = await listingService.listDistrictsByProvince(provinceId);
   res.json({ data });
 };
->>>>>>> Stashed changes

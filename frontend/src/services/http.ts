@@ -1,21 +1,16 @@
+// frontend/src/services/http.ts
 const isServer = typeof window === "undefined";
 
+// Server (SSR) gọi trực tiếp backend
 const INTERNAL_API_BASE =
   process.env.INTERNAL_API_BASE || "http://localhost:4000";
 
-const CLIENT_API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api";
+// Client (browser) gọi qua rewrite để tránh CORS
+// KHÔNG để http://localhost:4000/api ở đây, mà để '/api'
+const CLIENT_API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "/api";
 
-<<<<<<< Updated upstream
 export function apiUrl(path: string) {
   if (!path.startsWith("/")) path = `/${path}`;
   return isServer ? `${INTERNAL_API_BASE}${path}` : `${CLIENT_API_BASE}${path}`;
 }
-=======
-export function apiUrl(path: string): string {
-  // Sử dụng relative path cho API routes
-  if (path.startsWith('/api/')) {
-    return path;
-  }
-  return path;
-}
->>>>>>> Stashed changes

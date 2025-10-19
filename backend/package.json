@@ -14,11 +14,7 @@
     "@supabase/supabase-js": "^2.46.1",
     "@types/cookie-parser": "^1.4.9",
     "@types/cors": "^2.8.19",
-<<<<<<< Updated upstream
-    "@supabase/supabase-js": "^2.46.1",
-=======
     "axios": "^1.7.4",
->>>>>>> Stashed changes
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -31,7 +27,7 @@
     "nodemailer": "^6.9.13",
     "pdfkit": "^0.15.0",
     "pg": "^8.11.3",
-    "uuid": "^8.3.2"
+    "uuid": "8.3.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
