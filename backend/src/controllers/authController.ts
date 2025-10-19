@@ -6,7 +6,6 @@ import pool from "../config/database";
 import { sendResetEmail } from "../utils/email";
 import logger from "../utils/logger";
 
-
 /**
  * -----------------------------
  * Đăng ký tài khoản người dùng
@@ -45,12 +44,20 @@ export const register = async (req: Request, res: Response) => {
     );
     const user = inserted.rows[0];
 
-    // 5) Tạo token trả về cho FE (tuỳ bạn có muốn login luôn sau sign-up)
+    // 5) Tạo token với payload khớp middleware (id thay vì sub, thêm is_admin: false)
     const token = jwt.sign(
-      { sub: user.id, email: user.email },
+      { id: user.id, email: user.email, is_admin: false }, // Sửa payload để match JwtPayload
       process.env.JWT_SECRET || "dev_secret_change_me",
       { expiresIn: "7d" }
     );
+
+    // Set cookie tự động (httpOnly: true để an toàn, maxAge match exp)
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+    });
 
     return res.status(201).json({ token, user });
   } catch (err: any) {
@@ -94,12 +101,20 @@ export const login = async (req: import("express").Request, res: import("express
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
-    // Tạo JWT (tuỳ bạn đang để SECRET ở đâu)
+    // Tạo JWT với payload khớp middleware (id thay vì sub, thêm is_admin: false)
     const token = jwt.sign(
-      { sub: user.id, email: user.email },
+      { id: user.id, email: user.email, is_admin: false }, // Sửa payload để match JwtPayload
       process.env.JWT_SECRET || "dev_secret_change_me",
       { expiresIn: "7d" }
     );
+
+    // Set cookie tự động (httpOnly: true để an toàn, maxAge match exp)
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+    });
 
     // Chuẩn hoá dữ liệu trả về cho frontend
     return res.json({
@@ -116,7 +131,6 @@ export const login = async (req: import("express").Request, res: import("express
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 /**
  * -----------------------------
@@ -168,6 +182,10 @@ export const resetPassword = async (req: Request, res: Response) => {
  * -----------------------------
  */
 export const logout = async (req: Request, res: Response) => {
-  res.clearCookie("jwt");
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   res.json({ success: true, message: "Đăng xuất thành công" });
 };

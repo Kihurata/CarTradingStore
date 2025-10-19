@@ -74,6 +74,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
+
+        // ✅ Thêm: Lưu token vào cookie để middleware backend đọc (match req.cookies.jwt)
+        document.cookie = `jwt=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure=false`; // 7 ngày, dev: secure=false
+        console.log("New JWT cookie set from AuthModal:", token.substring(0, 20) + "...");
       }
 
       if (onAuthSuccess) {
@@ -95,10 +99,10 @@ const handleSubmit = async (e: React.FormEvent) => {
       }
     }
     alert(msg);
-    } finally {
+  } finally {
     setLoading(false);
-    }
-  };
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

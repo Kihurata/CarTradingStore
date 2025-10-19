@@ -1,4 +1,3 @@
-
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -8,32 +7,23 @@ import adminRoutes from "./routes/adminRoutes";
 import authRoutes from "./routes/authRoutes";
 import pool from "./config/database";
 import logger from "./utils/logger";
+import apiProxyRoutes from "./routes/apiProxyRoutes";
 
 const app: Application = express();
 
-// Thêm cookieParser
 app.use(cookieParser());
 
-// CORS cho frontend (local + Docker)
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000", // frontend local
-      "http://frontend:3000",  // frontend trong docker
-    ],
-    credentials: true, // cho phép gửi cookie và auth header
+    origin: ["http://localhost:3000", "http://frontend:3000"],
+    credentials: true,
   })
 );
-
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api/admin', adminRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/listings', listingRoutes); 
-
+// Health check trước
 app.get("/health", async (req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT NOW()");
@@ -50,6 +40,15 @@ app.get("/health", async (req: Request, res: Response) => {
   }
 });
 
+
+// Các route nội bộ (chạy trực tiếp backend thật)
+app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/listings", listingRoutes);
+
+app.use("/api", apiProxyRoutes);
+// Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   logger?.error(`Global error: ${err.message}`, {
     stack: err.stack,

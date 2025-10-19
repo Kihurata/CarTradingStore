@@ -1,7 +1,10 @@
+// src/services/listingService.ts
 import pool from '../config/database';
 import { logAudit } from './auditService';
 import { ListingStatus } from '../models/listing';
 import { Listing } from '../models/listing';
+import { v4 as uuidv4 } from "uuid";
+import { supabase } from "../utils/supabase";
 
 export async function getAllListings(
   status: string | undefined,
@@ -88,31 +91,107 @@ export async function getListingById(id: string) {
   return rows[0] || null;
 }
 
+export async function createListing(data: {
+  seller_id: string;
+  title: string;
+  price_vnd: number;
+  brand: string;
+  model: string;
+  year?: number;
+  gearbox?: string;
+  fuel?: string;
+  body_type?: string;
+  seats?: number;
+  origin?: string;
+  description?: string;
+  province_id?: number;
+  district_id?: number;
+  address_line?: string;
+  images?: Express.Multer.File[];
+}) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
 
+    // ✅ Thêm validation trước INSERT (dự phòng nếu controller bỏ sót)
+    if (!data.title || data.title.trim() === "") {
+      throw new Error("Title is required");
+    }
+    if (data.price_vnd <= 0) {
+      throw new Error("Price must be greater than 0");
+    }
 
-export async function createListing(sellerId: string, listingData: any) {
-  const values = [
-    sellerId,
-    listingData.title,
-    listingData.price_vnd,
-    listingData.brand,
-    listingData.model,
-    listingData.year,
-    listingData.mileage_km || null,
-    listingData.gearbox || null,
-    listingData.fuel || null,
-    listingData.body_type || null,
-    listingData.seats || null,
-    listingData.color_ext || null,
-    listingData.color_int || null,
-    listingData.location_text || null,
-    listingData.description || null
-  ];
-  const placeholders = values.map((_, i) => `$${i + 2}`).join(', ');
-  const query = `INSERT INTO listings (seller_id, title, price_vnd, brand, model, year, mileage_km, gearbox, fuel, body_type, seats, color_ext, color_int, location_text, description) VALUES ($1, ${placeholders}) RETURNING *`;
-  const { rows: [newListing] } = await pool.query(query, values);
-  await logAudit(sellerId, 'listing.create', 'listing', newListing.id);
-  return newListing;
+    // 1. Tạo bản ghi listing
+    const listingId = uuidv4();
+    await client.query(
+      `
+      INSERT INTO listings (
+        id, seller_id, title, price_vnd, brand, model, year, gearbox,
+        fuel, body_type, seats, origin, description,
+        province_id, district_id, address_line
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      `,
+      [
+        listingId,
+        data.seller_id,
+        data.title,
+        data.price_vnd,
+        data.brand || null,
+        data.model || null,
+        data.year || null,
+        data.gearbox || null,
+        data.fuel || null,
+        data.body_type || null,
+        data.seats || null,
+        data.origin || null,
+        data.description || null,
+        data.province_id || null,
+        data.district_id || null,
+        data.address_line || null,
+      ]
+    );
+
+    // 2. Upload images nếu có
+    if (data.images && data.images.length > 0) {
+      const uploadedUrls: string[] = [];
+      for (const file of data.images) {
+        const fileExt = file.originalname.split(".").pop();
+        const fileName = `pending/${uuidv4()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .getPublicUrl(fileName);
+
+        const imageUrl = publicData.publicUrl;
+        uploadedUrls.push(imageUrl);
+
+        await client.query(
+          `INSERT INTO listing_images (listing_id, file_key, public_url, position)
+           VALUES ($1,$2,$3,$4)`,
+          [listingId, fileName, imageUrl, uploadedUrls.length]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    await logAudit(data.seller_id, 'listing.create', 'listing', listingId);
+    return { id: listingId };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("createListing error:", err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function updateListingStatus(id: string, status: ListingStatus, approver_id?: string) {

@@ -1,9 +1,10 @@
+// src/controllers/listingController.ts
 import { Request, Response } from 'express';
 import * as listingService from '../services/listingService';
 import { ListingStatus } from '../models/listing';
 
 export const getAllListings = async (req: Request, res: Response) => {
-   try {
+  try {
     const { status, page = "1", limit = "10", min_price, max_price, body_type } = req.query;
     const p = parseInt(page as string, 10);
     const l = parseInt(limit as string, 10);
@@ -31,7 +32,7 @@ export const getAllListings = async (req: Request, res: Response) => {
 };
 
 export const getListing = async (req: Request, res: Response) => {
-   try {
+  try {
     const id = req.params.id;
     const listing = await listingService.getListingById(id);
 
@@ -48,12 +49,44 @@ export const getListing = async (req: Request, res: Response) => {
 
 export const createListing = async (req: Request, res: Response) => {
   try {
-    const sellerId = (req.user as any).id;
-    const listingData = req.body;
-    const listing = await listingService.createListing(sellerId, listingData);
-    res.status(201).json({ data: listing });
+    const sellerId = (req as any).user?.id || req.body.seller_id;
+
+    // ✅ Sửa: Map từ English keys của FormData (frontend append "title", "brand", etc.)
+    // Thêm validation cho các trường bắt buộc (title, price_vnd, etc.)
+    const body = req.body;
+    if (!body.title || body.title.trim() === "") {
+      return res.status(400).json({ error: "Tiêu đề (title) là bắt buộc" });
+    }
+    if (!body.price_vnd || Number(body.price_vnd) <= 0) {
+      return res.status(400).json({ error: "Giá bán (price_vnd) phải lớn hơn 0" });
+    }
+
+    const newListing = await listingService.createListing({
+      seller_id: sellerId,
+      title: body.title,
+      price_vnd: Number(body.price_vnd),
+      brand: body.brand || null,
+      model: body.model || null,
+      year: body.year ? parseInt(body.year as string, 10) : undefined,
+      gearbox: body.gearbox || null,
+      fuel: body.fuel || null,
+      body_type: body.body_type || null,
+      seats: body.seats ? Number(body.seats) : undefined,
+      origin: body.origin || null,
+      description: body.description || null,
+      province_id: body.province_id ? Number(body.province_id) : undefined,
+      district_id: body.district_id ? Number(body.district_id) : undefined,
+      address_line: body.address_line || null,
+      images: req.files as Express.Multer.File[],
+    });
+
+    res.status(201).json({
+      message: "Listing created successfully",
+      id: newListing.id,
+    });
   } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
+    console.error("❌ createListing controller error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
 

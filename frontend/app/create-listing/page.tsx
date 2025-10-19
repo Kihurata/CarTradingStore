@@ -105,15 +105,68 @@ export default function CreateListingPage() {
     videoUrl: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (images.length === 0) {
-      alert("Vui lòng thêm ít nhất 1 ảnh.");
-      return;
+  
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // ✅ Thêm validation cho title (và các trường bắt buộc khác)
+  if (!formData.tieuDe || formData.tieuDe.trim() === "") {
+    alert("Vui lòng nhập tiêu đề bài đăng!");
+    return;
+  }
+  if (images.length === 0) {
+    alert("Vui lòng thêm ít nhất 1 ảnh.");
+    return;
+  }
+
+  const form = new FormData();
+  form.append("brand", formData.hangXe || "");
+  form.append("model", formData.dongXe || "");
+  form.append("year", formData.namSanXuat || "");
+  form.append("price_vnd", formData.giaBan ? String(Number(formData.giaBan) * 1_000_000) : "0");
+  form.append("gearbox", formData.hopSo || "");
+  form.append("fuel", formData.nhienLieu || "");
+  form.append("body_type", formData.kieuDang || "");
+  form.append("seats", formData.soChoNgoi || "");
+  form.append("origin", formData.xuatXu || "");
+  form.append("description", formData.moTa || "");
+  form.append("title", formData.tieuDe || ""); // Đảm bảo không null
+  form.append("address_line", formData.diaChiNguoiBan || "");
+  form.append("province_id", provinceId ? String(provinceId) : "");
+  form.append("district_id", districtId ? String(districtId) : "");
+  images.forEach((file) => form.append("images", file));
+
+  // Lấy token từ localStorage để gửi qua cookie header (giữ nguyên phần này)
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const cookieHeader = token ? `jwt=${token}` : "";
+
+  try {
+    console.log("FormData title:", formData.tieuDe); // Log để debug
+    console.log("Token from localStorage for submit:", token ? token.substring(0, 20) + "..." : "none");
+    const res = await fetch("/api/listings", {
+      method: "POST",
+      body: form,
+      credentials: "include",
+      headers: {
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
     }
-    console.log("submit with images:", images, formData);
-    console.log("Form submitted:", formData);
-  };
+
+    alert("Đăng tin thành công!");
+  } catch (err: any) {
+    console.error("❌ Lỗi khi đăng tin:", err);
+    alert("Đăng tin thất bại!");
+  }
+};
+
+
+
 
   /* helper: kiểm tra URL hợp lệ */
   const isValidUrl = (v: string) => {
@@ -196,6 +249,10 @@ export default function CreateListingPage() {
                       required
                     >
                       <option value="">Chọn dòng xe</option>
+                      <option value="Sedan">Sedan</option>
+                      <option value="SUV">SUV</option>
+                      <option value="Hatchback">Hatchback</option>
+                      <option value="Coupe">Coupe</option>
                     </select>
                     <p className="text-xs text-red-500 mt-1">⚠ Vui lòng nhập dòng xe</p>
                   </div>
@@ -430,11 +487,18 @@ export default function CreateListingPage() {
                         Nơi bán xe<span className="text-red-500">*</span>
                       </label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-                        value={provinceId}
-                        onChange={(e) => setProvinceId(e.target.value ? Number(e.target.value) : "")}
-                        required
-                      >
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+                            value={provinceId}
+                            onChange={(e) => {
+                              const value = e.target.value ? Number(e.target.value) : "";
+                              setProvinceId(value);
+                              setFormData({
+                                ...formData,
+                                noiVanXe: value ? provinces.find(p => p.id === value)?.name || "" : "",
+                              });
+                            }}
+                            required
+                          >
                         <option value="">Chọn Tỉnh/Thành</option>
                         {provinces.map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
@@ -447,13 +511,21 @@ export default function CreateListingPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Quận/Huyện<span className="text-red-500">*</span>
                       </label>
-                      <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-                        value={districtId}
-                        onChange={(e) => setDistrictId(e.target.value ? Number(e.target.value) : "")}
-                        disabled={!provinceId}
-                        required
-                      >
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+                            value={districtId}
+                            onChange={(e) => {
+                              const value = e.target.value ? Number(e.target.value) : "";
+                              setDistrictId(value);
+                              setFormData({
+                                ...formData,
+                                quanHuyen: value ? districts.find(d => d.id === value)?.name || "" : "",
+                              });
+                            }}
+                            disabled={!provinceId}
+                            required
+                          >
+
                         <option value="">{provinceId ? "Chọn quận/huyện" : "Chọn Tỉnh/Thành trước"}</option>
                         {districts.map(d => (
                           <option key={d.id} value={d.id}>{d.name}</option>

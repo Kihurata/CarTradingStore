@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/+$/, "");
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -41,3 +42,12 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     try { return JSON.parse(text) as T; } catch { return text as unknown as T; }
   }
 }
+
+//phần thêm mới để wrapper cho api.post để không sửa api.ts, k có sửa file cũ (này huy châu comment)
+(api as any).post = async function <T>(path: string, data: any, config?: RequestInit): Promise<T> {
+  return api<T>(path, {
+    method: "POST",
+    body: data,
+    ...config,
+  });
+};
