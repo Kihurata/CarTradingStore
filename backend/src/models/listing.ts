@@ -11,8 +11,12 @@ export interface Listing {
   seller_id: string;
   title: string;
   price_vnd: number;
+
   brand: string;
   model: string;
+  brand_id: number;
+  model_id: number;
+
   year: number;
   mileage_km?: number;
   gearbox?: string;
@@ -23,7 +27,7 @@ export interface Listing {
   color_int?: string;
   location_text?: string;
   description?: string;
-  status: ListingStatus;
+  status: ListingStatus; 
   views_count: number;
   edits_count: number;
   reports_count: number;

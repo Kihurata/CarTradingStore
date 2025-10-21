@@ -46,6 +46,8 @@ export async function getAllListings(
   const sql = `
     SELECT
       l.*,
+      b.name AS brand,
+      m.name AS model,
       (
         SELECT li.public_url
         FROM listing_images li
@@ -55,11 +57,12 @@ export async function getAllListings(
       ) AS thumbnail_url,
       COUNT(*) OVER() AS total_count
     FROM listings l
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
     ${whereSql}
     ORDER BY l.created_at DESC
     LIMIT $${params.length - 1} OFFSET $${params.length};
   `;
-
   const { rows } = await pool.query(sql, params);
 
   const total = rows[0] ? Number(rows[0].total_count) : 0;
@@ -72,6 +75,8 @@ export async function getListingById(id: string) {
   const sql = `
     SELECT
       l.*,
+      b.name AS brand,
+      m.name AS model,
       u.name AS seller_name,
       u.phone AS seller_phone,
       (
@@ -82,6 +87,8 @@ export async function getListingById(id: string) {
         LIMIT 1
       ) AS thumbnail_url
     FROM listings l
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
     LEFT JOIN users u ON u.id = l.seller_id
     WHERE l.id::text = $1
     LIMIT 1;
@@ -95,8 +102,8 @@ export async function createListing(data: {
   seller_id: string;
   title: string;
   price_vnd: number;
-  brand: string;
-  model: string;
+  brand_id: number;
+  model_id: number;
   year?: number;
   gearbox?: string;
   fuel?: string;
@@ -126,7 +133,7 @@ export async function createListing(data: {
     await client.query(
       `
       INSERT INTO listings (
-        id, seller_id, title, price_vnd, brand, model, year, gearbox,
+        id, seller_id, title, price_vnd, brand_id, model_id, year, gearbox,
         fuel, body_type, seats, origin, description,
         province_id, district_id, address_line
       )
@@ -137,8 +144,8 @@ export async function createListing(data: {
         data.seller_id,
         data.title,
         data.price_vnd,
-        data.brand || null,
-        data.model || null,
+        data.brand_id, // Đổi từ data.brand
+        data.model_id, // Đổi từ data.model
         data.year || null,
         data.gearbox || null,
         data.fuel || null,
@@ -219,17 +226,38 @@ export async function updateListing(id: string, updates: any, userId: string) {
 }
 
 export async function getAllListingsAdmin() {
-  const { rows } = await pool.query('SELECT * FROM listings ORDER BY created_at DESC');
-  await logAudit('system', 'listing.list', 'listing', undefined);  // Fix: undefined instead of null
+  const sql = `
+    SELECT
+      l.*,
+      b.name AS brand,
+      m.name AS model
+    FROM listings l
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
+    ORDER BY l.created_at DESC
+  `;
+  const { rows } = await pool.query(sql);
+  // === HẾT THAY ĐỔI ===
+  await logAudit('system', 'listing.list', 'listing', undefined);
   return rows;
 }
 
 export async function getUserListings(userId: string, page: number = 1, limit: number = 10) {
   const offset = (page - 1) * limit;
-  const { rows } = await pool.query(
-    'SELECT * FROM listings WHERE seller_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-    [userId, limit, offset]
-  );
+  const sql = `
+    SELECT
+      l.*,
+      b.name AS brand,
+      m.name AS model
+    FROM listings l
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
+    WHERE l.seller_id = $1
+    ORDER BY l.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
+  const { rows } = await pool.query(sql, [userId, limit, offset]);
+  // === HẾT THAY ĐỔI ===
   return rows;
 }
 
