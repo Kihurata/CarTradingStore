@@ -32,6 +32,8 @@ export function AuthModal({
   const [activeTab, setActiveTab] = useState<"login" | "register">(defaultTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -144,13 +146,13 @@ const handleSubmit = async (e: React.FormEvent) => {
         <form onSubmit={handleSubmit} className="p-8 space-y-4">
           <input
             type="email"
-            placeholder="Email hoặc số điện thoại *"
+            placeholder="Email *"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
           />
-
+          
           <input
             type="password"
             placeholder="Mật khẩu *"
@@ -161,14 +163,37 @@ const handleSubmit = async (e: React.FormEvent) => {
           />
 
           {activeTab === "register" && (
-            <input
-              type="password"
-              placeholder="Nhập lại mật khẩu *"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
-              required
-            />
+            <>
+              <input
+                type="password"
+                placeholder="Nhập lại mật khẩu *"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
+                required
+              />
+
+              <input
+                type="tel"
+                placeholder="Số điện thoại *"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
+                required
+                inputMode="tel"
+                pattern="^[0-9+\s\-().]{8,20}$"
+                title="Nhập số điện thoại hợp lệ (8–20 ký tự)"
+              />
+
+              <input
+                type="text"
+                placeholder="Địa chỉ *"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
+                required
+              />  
+          </>
           )}
 
           <button
