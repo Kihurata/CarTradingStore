@@ -13,17 +13,21 @@ import logger from "../utils/logger";
  */
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, confirmPassword, name, phone } = req.body ?? {};
+    const { email, password, confirmPassword, name, phone, address } = req.body ?? {};
 
     // 1) Validate đơn giản
-    if (!email || !password || !confirmPassword) {
-      return res.status(400).json({ error: "Thiếu email / password / confirmPassword" });
+    if (!email || !password || !confirmPassword || !phone || !address) {
+      return res.status(400).json({ error: "Thiếu email / password / confirmPassword / phone / address" });
     }
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Mật khẩu xác nhận không khớp" });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: "Mật khẩu tối thiểu 6 ký tự" });
+    }
+    // Validate phone cơ bản
+    if (!/^[0-9+\s\-().]{8,20}$/.test(phone)) {
+      return res.status(400).json({ error: "Số điện thoại không hợp lệ" });
     }
 
     // 2) Check email tồn tại
@@ -37,10 +41,10 @@ export const register = async (req: Request, res: Response) => {
 
     // 4) Tạo user (DB tự gen id bằng gen_random_uuid())
     const inserted = await pool.query(
-      `INSERT INTO users (email, password_hash, name, phone)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, email`,
-      [email, passwordHash, name ?? email.split("@")[0], phone ?? null]
+      `INSERT INTO users (email, password_hash, name, phone, address)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, name, email, phone, address`,
+      [email, passwordHash, name ?? email.split("@")[0], phone ?? null, address ?? null]
     );
     const user = inserted.rows[0];
 
@@ -59,7 +63,16 @@ export const register = async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
     });
 
-    return res.status(201).json({ token, user });
+    return res.status(201).json({ 
+      token, 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        address: user.address
+      } 
+    });
   } catch (err: any) {
     // Bắt lỗi unique_violation của Postgres (mã 23505) nếu rơi vào race condition
     const code = err?.code || err?.original?.code;
@@ -87,7 +100,7 @@ export const login = async (req: import("express").Request, res: import("express
 
     // Tìm user theo email
     const result = await pool.query(
-      "SELECT id, name, email, password_hash FROM users WHERE email = $1 LIMIT 1",
+      "SELECT id, name, email, phone, address, password_hash FROM users WHERE email = $1 LIMIT 1",
       [email]
     );
     const user = result.rows[0];
@@ -123,6 +136,8 @@ export const login = async (req: import("express").Request, res: import("express
         id: user.id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        address: user.address,
       },
     });
   } catch (err: any) {

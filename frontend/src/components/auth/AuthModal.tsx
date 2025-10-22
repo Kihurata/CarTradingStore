@@ -9,6 +9,8 @@ type User = {
   id?: string;
   name?: string;
   email: string;
+  phone?: string;
+  address?: string;
 };
 
 type AuthResponse = {
@@ -51,17 +53,22 @@ const handleSubmit = async (e: React.FormEvent) => {
         return;
       }
 
-      // ✅ Gửi đủ cả confirmPassword
+      // ✅ Gửi đủ cả confirmPassword + phone + address
       await api("/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, confirmPassword }),
+        body: JSON.stringify({ email, password, confirmPassword, phone, address }),
       });
 
       alert("🎉 Đăng ký thành công! Hãy đăng nhập.");
       setActiveTab("login");
+      // Reset fields sau register (tùy chọn)
+      setPhone(""); 
+      setAddress(""); 
+      setPassword(""); 
+      setConfirmPassword("");
     } else {
       // ✅ Đăng nhập
       const data = await api<AuthResponse>("/auth/login", {

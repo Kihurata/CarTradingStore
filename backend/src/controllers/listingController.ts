@@ -49,36 +49,52 @@ export const getListing = async (req: Request, res: Response) => {
 
 export const createListing = async (req: Request, res: Response) => {
   try {
-    const sellerId = (req as any).user?.id || req.body.seller_id;
+    const sellerId = (req as any).user?.id;
+    
+    if (!sellerId) {
+      return res.status(401).json({ error: "Unauthorized - User not found" });
+    }
 
-    // ✅ Sửa: Map từ English keys của FormData (frontend append "title", "brand", etc.)
-    // Thêm validation cho các trường bắt buộc (title, price_vnd, etc.)
-    const body = req.body;
-    if (!body.title || body.title.trim() === "") {
+    // Debug log
+    console.log("📨 Received create listing request from user:", sellerId);
+    console.log("📦 Request body:", req.body);
+    console.log("📸 Files:", req.files);
+
+    // Validation
+    if (!req.body.title || req.body.title.trim() === "") {
       return res.status(400).json({ error: "Tiêu đề (title) là bắt buộc" });
     }
-    if (!body.price_vnd || Number(body.price_vnd) <= 0) {
+    if (!req.body.price_vnd || Number(req.body.price_vnd) <= 0) {
       return res.status(400).json({ error: "Giá bán (price_vnd) phải lớn hơn 0" });
+    }
+    if (!req.body.brand_id || !req.body.model_id) {
+      return res.status(400).json({ error: "Hãng xe (brand_id) và dòng xe (model_id) là bắt buộc" });
     }
 
     const newListing = await listingService.createListing({
       seller_id: sellerId,
-      title: body.title,
-      price_vnd: Number(body.price_vnd),
-      brand: body.brand || null,
-      model: body.model || null,
-      year: body.year ? parseInt(body.year as string, 10) : undefined,
-      gearbox: body.gearbox || null,
-      fuel: body.fuel || null,
-      body_type: body.body_type || null,
-      seats: body.seats ? Number(body.seats) : undefined,
-      origin: body.origin || null,
-      description: body.description || null,
-      province_id: body.province_id ? Number(body.province_id) : undefined,
-      district_id: body.district_id ? Number(body.district_id) : undefined,
-      address_line: body.address_line || null,
+      title: req.body.title,
+      price_vnd: Number(req.body.price_vnd),
+      brand_id: Number(req.body.brand_id),
+      model_id: Number(req.body.model_id),
+      year: Number(req.body.year),
+      mileage_km: req.body.mileage_km ? Number(req.body.mileage_km) : undefined,
+      gearbox: req.body.gearbox || null,
+      fuel: req.body.fuel || null,
+      body_type: req.body.body_type || null,
+      seats: req.body.seats ? Number(req.body.seats) : undefined,
+      origin: req.body.origin || null,
+      description: req.body.description || null,
+      province_id: req.body.province_id ? Number(req.body.province_id) : undefined,
+      district_id: req.body.district_id ? Number(req.body.district_id) : undefined,
+      address_line: req.body.address_line || null,
+      color_ext: req.body.color_ext || null,
+      color_int: req.body.color_int || null,
+      video_url: req.body.video_url || null,
       images: req.files as Express.Multer.File[],
     });
+
+    console.log("✅ Listing created successfully:", newListing.id);
 
     res.status(201).json({
       message: "Listing created successfully",
@@ -177,4 +193,25 @@ export const getDistrictsByProvince = async (req: Request, res: Response) => {
   if (!provinceId) return res.status(400).json({ message: "province_id is required" });
   const data = await listingService.listDistrictsByProvince(provinceId);
   res.json({ data });
+};
+
+export const getBrands = async (req: Request, res: Response) => {
+  try {
+    const data = await listingService.listBrands();
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+};
+
+export const getModelsByBrand = async (req: Request, res: Response) => {
+  try {
+    const brandId = Number(req.query.brand_id);
+    if (!brandId) return res.status(400).json({ message: "brand_id is required" });
+    
+    const data = await listingService.listModelsByBrand(brandId);
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
 };

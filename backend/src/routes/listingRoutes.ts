@@ -1,3 +1,4 @@
+//scr/routes/listingRoutes.ts
 import { Router } from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth";
 import * as listingController from "../controllers/listingController";
@@ -50,4 +51,8 @@ router.post("/:id/report", authenticateToken, listingController.reportViolation)
 router.get("/locations/provinces", listingController.getProvinces);
 router.get("/locations/districts", listingController.getDistrictsByProvince);
 
+
+// Brands & Models
+router.get("/brands", listingController.getBrands);
+router.get("/models", listingController.getModelsByBrand);
 export default router;

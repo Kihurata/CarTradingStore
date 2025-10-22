@@ -105,6 +105,7 @@ export async function createListing(data: {
   brand_id: number;
   model_id: number;
   year?: number;
+  mileage_km?: number;
   gearbox?: string;
   fuel?: string;
   body_type?: string;
@@ -114,6 +115,9 @@ export async function createListing(data: {
   province_id?: number;
   district_id?: number;
   address_line?: string;
+  color_ext?: string;
+  color_int?: string;
+  video_url?: string;
   images?: Express.Multer.File[];
 }) {
   const client = await pool.connect();
@@ -127,35 +131,54 @@ export async function createListing(data: {
     if (data.price_vnd <= 0) {
       throw new Error("Price must be greater than 0");
     }
+    if (!data.brand_id || !data.model_id) {
+      throw new Error("Brand ID and Model ID are required");
+    }
+    if (!data.year || data.year < 1900) {
+      throw new Error("Year must be >= 1900");
+    }
+    if (data.mileage_km !== undefined && data.mileage_km < 0) {
+      throw new Error("Mileage must be >= 0");
+    }
+    if (data.color_ext && !/^#([0-9A-Fa-f]{6})$/.test(data.color_ext)) {
+      throw new Error("Exterior color must be hex #RRGGBB");
+    }
+    if (data.color_int && !/^#([0-9A-Fa-f]{6})$/.test(data.color_int)) {
+      throw new Error("Interior color must be hex #RRGGBB");
+    }
 
     // 1. Tạo bản ghi listing
     const listingId = uuidv4();
     await client.query(
       `
       INSERT INTO listings (
-        id, seller_id, title, price_vnd, brand_id, model_id, year, gearbox,
-        fuel, body_type, seats, origin, description,
-        province_id, district_id, address_line
+        id, seller_id, title, price_vnd, brand_id, model_id, year, mileage_km, gearbox,
+        fuel, body_type, seats, color_ext, color_int, origin, description,
+        province_id, district_id, address_line, video_url
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       `,
       [
         listingId,
         data.seller_id,
         data.title,
         data.price_vnd,
-        data.brand_id, // Đổi từ data.brand
-        data.model_id, // Đổi từ data.model
-        data.year || null,
+        data.brand_id,
+        data.model_id,
+        data.year,
+        data.mileage_km || null,
         data.gearbox || null,
         data.fuel || null,
         data.body_type || null,
         data.seats || null,
+        data.color_ext || null,
+        data.color_int || null,
         data.origin || null,
         data.description || null,
         data.province_id || null,
         data.district_id || null,
         data.address_line || null,
+        data.video_url || null,
       ]
     );
 
@@ -304,6 +327,25 @@ export async function listDistrictsByProvince(
   const { rows } = await pool.query<{ id: number; name: string }>(
     "SELECT id, name FROM districts WHERE province_id = $1 ORDER BY name",
     [provinceId]
+  );
+  return rows;
+}
+
+// Lấy danh sách brands
+export async function listBrands(): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM brands ORDER BY name"
+  );
+  return rows;
+}
+
+// Lấy danh sách models theo brand
+export async function listModelsByBrand(
+  brandId: number
+): Promise<{ id: number; name: string }[]> {
+  const { rows } = await pool.query<{ id: number; name: string }>(
+    "SELECT id, name FROM models WHERE brand_id = $1 ORDER BY name",
+    [brandId]
   );
   return rows;
 }
