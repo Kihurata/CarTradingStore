@@ -3,7 +3,7 @@ export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/+
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const fullUrl = path.startsWith("http") ? path : `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
-
+  
   const res = await fetch(fullUrl, {
     credentials: "include",
     cache: "no-store",
@@ -17,21 +17,22 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const contentType = res.headers.get("content-type") || "";
 
   if (!res.ok) {
+    const copy = res.clone();
+    const ct = res.headers.get("content-type") || "";
+    let payload: unknown = null;
     try {
-      if (contentType.includes("application/json")) {
-        const j = await res.json();
-        console.error(`[API ERROR] ${res.status} -`, j);
-        throw new Error(JSON.stringify({ status: res.status, ...j }));
-      } else {
-        const text = (await res.text())?.trim();
-        console.error(`[API ERROR] ${res.status} - ${text}`);
-        throw new Error(JSON.stringify({ status: res.status, error: text || res.statusText }));
-      }
+      payload = ct.includes("application/json") ? await res.json() : (await res.text());
     } catch {
-      console.error(`[API ERROR] ${res.status} - <unreadable body>`);
-      throw new Error(JSON.stringify({ status: res.status, error: res.statusText }));
+      try { payload = await copy.text(); } catch {}
     }
+    console.error("[API ERROR]", res.status, "-", payload ?? "<unreadable>");
+    throw new Error(JSON.stringify({
+      status: res.status,
+      error: payload || res.statusText,
+      headers: Object.fromEntries(res.headers.entries()),
+    }));
   }
+
 
   if (res.status === 204) return undefined as T;
 

@@ -10,6 +10,14 @@ const router = Router();
 // Danh sách bài đăng
 router.get("/", listingController.getAllListings);
 
+// Địa điểm
+router.get("/locations/provinces", listingController.getProvinces);
+router.get("/locations/districts", listingController.getDistrictsByProvince);
+
+// Brands & Models
+router.get("/brands", listingController.getBrands);
+router.get("/models", listingController.getModelsByBrand);
+
 // Chi tiết 1 bài đăng
 router.get("/:id", listingController.getListing);
 
@@ -47,12 +55,4 @@ router.post("/:id/favorite", authenticateToken, listingController.addFavorite);
 router.post("/:id/comparison", authenticateToken, listingController.addComparison);
 router.post("/:id/report", authenticateToken, listingController.reportViolation);
 
-// Địa điểm
-router.get("/locations/provinces", listingController.getProvinces);
-router.get("/locations/districts", listingController.getDistrictsByProvince);
-
-
-// Brands & Models
-router.get("/brands", listingController.getBrands);
-router.get("/models", listingController.getModelsByBrand);
 export default router;

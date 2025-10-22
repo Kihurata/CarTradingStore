@@ -196,19 +196,14 @@ export const getDistrictsByProvince = async (req: Request, res: Response) => {
 };
 
 export const getBrands = async (req: Request, res: Response) => {
-  try {
-    const data = await listingService.listBrands();
-    res.json({ data });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
-  }
+  const data = await listingService.listBrands();
+  res.json({ data });
 };
 
 export const getModelsByBrand = async (req: Request, res: Response) => {
   try {
     const brandId = Number(req.query.brand_id);
     if (!brandId) return res.status(400).json({ message: "brand_id is required" });
-    
     const data = await listingService.listModelsByBrand(brandId);
     res.json({ data });
   } catch (err) {
