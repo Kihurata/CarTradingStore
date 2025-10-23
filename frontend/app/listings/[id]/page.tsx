@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import ReportModal from "@/src/components/listings/ReportModal"; 
 import Gallery from "@/src/components/listings/Gallery"; 
 import { useParams } from "next/navigation"; 
+import { formatPriceVND } from "@/lib/formatCurrency";
 
 interface ListingDetail {
   id: string;
@@ -135,9 +136,7 @@ export default function ListingDetailPage() {
         {/* Ảnh chính */}
         <div className="md:col-span-2">
           <h1 className="text-2xl font-semibold mt-4 text-black">{car.title}</h1>
-          <p className="text-red-600 text-xl font-bold mt-1">
-            {car.price_vnd.toLocaleString("vi-VN")} ₫
-          </p>
+          <p className="text-2xl font-bold text-red-600 mt-4 mb-4">{formatPriceVND(car.price_vnd)}</p>
           {/* Bộ sưu tập ảnh */}
           <Gallery images={galleryImages} />
           {/* Tình trạng xe */}

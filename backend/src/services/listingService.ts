@@ -11,7 +11,7 @@ export async function getAllListings(
   page: number,
   limit: number,
   filters?: { min_price?: number; max_price?: number; body_type?: string }
-): Promise<{ items: Listing[]; total: number }> {
+): Promise<{ items: (Listing & { thumbnail_url?: string; seller_name?: string | null; seller_phone?: string | null })[]; total: number }> {
   const offset = (page - 1) * limit;
 
   const params: (string | number)[] = [];
@@ -34,12 +34,13 @@ export async function getAllListings(
 
   if (filters?.body_type) {
     params.push(filters.body_type);
+    // body_type là TEXT; dùng ILIKE để không phân biệt hoa thường
     where.push(`l.body_type ILIKE $${params.length}`);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  // ✅ chỉ thêm limit/offset khi chắc chắn có giá trị
+  // limit/offset luôn ở 2 tham số cuối
   params.push(limit);
   params.push(offset);
 
@@ -48,6 +49,8 @@ export async function getAllListings(
       l.*,
       b.name AS brand,
       m.name AS model,
+      u.name  AS seller_name,
+      u.phone AS seller_phone,
       (
         SELECT li.public_url
         FROM listing_images li
@@ -59,17 +62,22 @@ export async function getAllListings(
     FROM listings l
     JOIN brands b ON l.brand_id = b.id
     JOIN models m ON l.model_id = m.id
+    JOIN users  u ON u.id = l.seller_id
     ${whereSql}
     ORDER BY l.created_at DESC
     LIMIT $${params.length - 1} OFFSET $${params.length};
   `;
+
   const { rows } = await pool.query(sql, params);
 
   const total = rows[0] ? Number(rows[0].total_count) : 0;
-  const items = rows.map(({ total_count, ...rest }) => rest as Listing & { thumbnail_url?: string });
+  const items = rows.map(({ total_count, ...rest }) =>
+    (rest as Listing & { thumbnail_url?: string; seller_name?: string | null; seller_phone?: string | null })
+  );
 
   return { items, total };
 }
+
 
 export async function getListingById(id: string) {
   const sql = `

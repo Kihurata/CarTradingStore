@@ -4,6 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import Image from "next/image";
 import { api } from "@/lib/api";
+import { formatPriceVND } from "@/lib/formatCurrency";
 
 interface ListingItem {
   id: string;
@@ -101,17 +102,14 @@ function Card({ item, skeleton }: { item?: ListingItem; skeleton?: boolean }) {
             fill
             className="object-cover"
             sizes="220px"
+            loading="eager"
           />
         )}
       </div>
       <div className="p-3">
         <div className="line-clamp-1 text-black text-[15px] font-bold">{item.title}</div>
-        <div className="mt-1 font-semibold text-blue-600">
-          {item.price_vnd.toLocaleString("vi-VN")} ₫
-        </div>
-        <div className="mt-1 text-[12px] text-blue-600 hover:underline">
-          Xem chi tiết »
-        </div>
+        <p className="font-bold text-black">{formatPriceVND(item.price_vnd)}</p>
+                <div className="font-bold mt-1 text-[14px] text-blue-400 hover:underline">Xem chi tiết »</div>
       </div>
     </Link>
   );
