@@ -160,7 +160,7 @@ BEGIN
       brand_id, model_id, 
       year, mileage_km,
       gearbox, fuel, body_type, seats, color_ext, color_int,
-      location_text, description, status, views_count
+      location_text, description, status, views_count, video_url
     )
     SELECT
       uid, 
@@ -169,45 +169,45 @@ BEGIN
       m.id, -- Lấy model_id từ bảng models
       r.year, r.mileage_km,
       r.gearbox, r.fuel, r.body_type, r.seats, r.color_ext, r.color_int,
-      r.location_text, r.description, r.status::listing_status, r.views_count
+      r.location_text, r.description, r.status::listing_status, r.views_count, r.video_url
       
     -- Thay vì dùng WITH, ta định nghĩa bảng tạm ngay trong FROM
     FROM (
       VALUES
         ('Toyota Vios 1.5G 2020 – Giá tốt, xe đẹp như mới', 465000000, 'Toyota', 'Vios', 2020, 42000,
          'AT', 'xăng', 'sedan', 5, '#FFFFFF', '#000000', 'TP.HCM - Quận 7',
-         'Xe chính chủ, bảo dưỡng định kỳ Toyota Lý Thường Kiệt.', 'approved', 135),
+         'Xe chính chủ, bảo dưỡng định kỳ Toyota Lý Thường Kiệt.', 'approved', 135, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Honda City 1.5RS 2021 – bản thể thao, còn rất mới', 575000000, 'Honda', 'City', 2021, 30000,
          'CVT', 'xăng', 'sedan', 5, '#FF0000', '#000000', 'Hà Nội - Cầu Giấy',
-         'Xe đi kỹ, nội thất thể thao, gầm bệ chắc chắn.', 'approved', 240),
+         'Xe đi kỹ, nội thất thể thao, gầm bệ chắc chắn.', 'approved', 240, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Mazda CX-5 2.0L 2019 – SUV tiết kiệm, biển SG', 720000000, 'Mazda', 'CX-5', 2019, 60000,
          'AT', 'xăng', 'SUV', 5, '#007BFF', '#FFFDD0', 'TP.HCM - Bình Thạnh',
-         'Xe cá nhân sử dụng, bảo dưỡng Mazda Trường Chinh.', 'approved', 312),
+         'Xe cá nhân sử dụng, bảo dưỡng Mazda Trường Chinh.', 'approved', 312, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Hyundai Accent 1.4AT 2020 – bản đặc biệt', 455000000, 'Hyundai', 'Accent', 2020, 50000,
          'AT', 'xăng', 'sedan', 5, '#C0C0C0', '#000000', 'Đà Nẵng - Hải Châu',
-         'Xe gia đình, không kinh doanh, nội thất đẹp.', 'approved', 98),
+         'Xe gia đình, không kinh doanh, nội thất đẹp.', 'approved', 98, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Kia Seltos 1.4 Turbo 2022 – chạy 15.000km', 715000000, 'Kia', 'Seltos', 2022, 15000,
          'AT', 'xăng', 'SUV', 5, '#FFA500', '#000000', 'Hà Nội - Long Biên',
-         'Xe mới 99%, bao test hãng, nội thất cao cấp.', 'approved', 402),
+         'Xe mới 99%, bao test hãng, nội thất cao cấp.', 'approved', 402, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Ford Ranger Wildtrak 2.0 4x4 2021 – siêu lướt', 950000000, 'Ford', 'Ranger', 2021, 25000,
          'AT', 'dầu', 'pickup', 5, '#808080', '#000000', 'TP.HCM - Tân Bình',
-         'Xe ít chạy, bảo dưỡng đầy đủ, không ngập nước.', 'approved', 370),
+         'Xe ít chạy, bảo dưỡng đầy đủ, không ngập nước.', 'approved', 370, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('VinFast Lux A2.0 2020 – bản cao cấp Turbo', 680000000, 'VinFast', 'Lux A2.0', 2020, 40000,
          'AT', 'xăng', 'sedan', 5, '#000000', '#8B4513', 'Hải Phòng - Ngô Quyền',
-         'Xe đại lý mua mới, sang tên ngay.', 'approved', 289),
+         'Xe đại lý mua mới, sang tên ngay.', 'approved', 289, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Mercedes-Benz C-Class 2018 – xe nhập, full option', 1290000000, 'Mercedes-Benz', 'C-Class', 2018, 70000,
          'AT', 'xăng', 'sedan', 5, '#FFFFFF', '#FF0000', 'TP.HCM - Quận 1',
-         'Xe sang, bản full, hỗ trợ trả góp.', 'approved', 510),
+         'Xe sang, bản full, hỗ trợ trả góp.', 'approved', 510, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Mitsubishi Xpander 1.5AT 2021 – xe gia đình chuẩn', 590000000, 'Mitsubishi', 'Xpander', 2021, 35000,
          'AT', 'xăng', 'MPV', 7, '#C0C0C0', '#000000', 'Cần Thơ - Ninh Kiều',
-         'Xe gia đình, rộng rãi, tiết kiệm nhiên liệu.', 'approved', 210),
+         'Xe gia đình, rộng rãi, tiết kiệm nhiên liệu.', 'approved', 210, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2'),
         ('Peugeot 3008 Allure 2020 – thiết kế châu Âu, chạy 40k', 875000000, 'Peugeot', '3008', 2020, 40000,
          'AT', 'xăng', 'SUV', 5, '#FFFFFF', '#000000', 'Hà Nội - Ba Đình',
-         'Xe chuẩn châu Âu, nội thất cực đẹp, hỗ trợ trả góp.', 'approved', 177)
+         'Xe chuẩn châu Âu, nội thất cực đẹp, hỗ trợ trả góp.', 'approved', 177, 'https://youtu.be/9Yzn2A-NJmw?si=r2MtQbd0uJlTMLF2')
     ) AS r ( -- Đặt tên cho bảng tạm và các cột của nó
       title, price_vnd, brand_name, model_name, year, mileage_km,
       gearbox, fuel, body_type, seats, color_ext, color_int,
-      location_text, description, status, views_count
+      location_text, description, status, views_count, video_url
     )
     -- JOIN để tra cứu ID
     JOIN brands b ON r.brand_name = b.name

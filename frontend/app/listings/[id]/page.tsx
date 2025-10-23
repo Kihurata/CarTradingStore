@@ -24,6 +24,7 @@ interface ListingDetail {
   seller_name?: string;
   seller_phone?: string;
   thumbnail_url?: string;
+  video_url?: string;
   images?: { id: string; public_url: string; position: number }[];
   created_at?: string;
 }
@@ -78,6 +79,55 @@ export default function ListingDetailPage() {
 
     return imgs;
   })();
+
+  function getYouTubeEmbedUrl(raw: string): string {
+    try {
+      const s = raw.trim();
+
+      // Đã là embed sẵn
+      if (s.startsWith("https://www.youtube.com/embed/") || s.startsWith("https://www.youtube-nocookie.com/embed/")) {
+        return s;
+      }
+
+      const u = new URL(s);
+
+      // youtu.be/<id>
+      if (u.hostname === "youtu.be") {
+        const id = u.pathname.slice(1);
+        return `https://www.youtube.com/embed/${id}${u.search}`; // giữ tham số (t, si, …)
+      }
+
+      // youtube.com/* (watch, shorts, live, playlist…)
+      if (u.hostname.includes("youtube.com")) {
+        // watch?v=<id>
+        const v = u.searchParams.get("v");
+        if (v) return `https://www.youtube.com/embed/${v}${keepParams(u.searchParams)}`;
+
+        // shorts/<id>, live/<id>
+        const m = u.pathname.match(/^\/(shorts|live)\/([^/?#]+)/);
+        if (m) return `https://www.youtube.com/embed/${m[2]}${keepParams(u.searchParams)}`;
+
+        // playlist chỉ phát trong embed nếu có video id; nếu chỉ có list= thì bỏ qua
+        // rơi vào default: trả nguyên (để bạn dễ thấy nếu dán sai)
+      }
+
+      // Không nhận diện được → trả nguyên để bạn còn thấy sai mà sửa
+      return s;
+    } catch {
+      return raw;
+    }
+
+    // Giữ lại 1 số tham số hợp lệ cho embed (t = thời điểm bắt đầu, si,…)
+    function keepParams(sp: URLSearchParams) {
+      const allowed = ["t", "start", "si"];
+      const kept = new URLSearchParams();
+      allowed.forEach(k => { const v = sp.get(k); if (v) kept.set(k, v); });
+      const q = kept.toString();
+      return q ? `?${q}` : "";
+    }
+  }
+
+
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
@@ -137,7 +187,25 @@ export default function ListingDetailPage() {
               {car.description || "Không có mô tả chi tiết."}
             </p>
           </div>
-
+          {/* Video giới thiệu (nếu có YouTube URL) */}
+          {car.video_url && (() => {
+            const embed = getYouTubeEmbedUrl(car.video_url);
+            return embed ? (
+              <section className="mt-6">
+                <h3 className="text-lg font-semibold mb-2 text-black">Video giới thiệu</h3>
+                <div className="aspect-video rounded-lg overflow-hidden border shadow-sm">
+                  <iframe
+                    className="w-full h-full border-0"
+                    src={embed}
+                    title="Video giới thiệu xe"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              </section>
+            ) : null;
+          })()}
           {/* Thanh công cụ dưới mô tả */}
           <div className="flex flex-wrap items-center justify-between border-t border-gray-200 mt-6 pt-4 text-sm text-gray-600">
             {/* Nút báo cáo */}

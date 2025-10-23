@@ -36,6 +36,7 @@ export interface Listing {
   created_at: Date;
   updated_at: Date;
   thumbnail_url?: string;
+  video_url?: string;
   seller_name?: string;
   seller_phone?: string;
 }
