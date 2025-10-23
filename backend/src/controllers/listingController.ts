@@ -3,31 +3,45 @@ import { Request, Response } from 'express';
 import * as listingService from '../services/listingService';
 import { ListingStatus } from '../models/listing';
 
+const toPositiveInt = (v: unknown, def: number, max?: number) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 1) return def;
+  const i = Math.floor(n);
+  return max ? Math.min(i, max) : i;
+};
+
 export const getAllListings = async (req: Request, res: Response) => {
   try {
-    const { status, page = "1", limit = "10", min_price, max_price, body_type } = req.query;
-    const p = parseInt(page as string, 10);
-    const l = parseInt(limit as string, 10);
+    // Đọc & chuẩn hóa query
+    const status = (req.query.status as string | undefined)?.trim() || "approved";
+    const page = toPositiveInt(req.query.page, 1);
+    const limit = toPositiveInt(req.query.limit, 12, 60); // giới hạn tối đa 60
 
     const filters = {
-      min_price: min_price ? Number(min_price) : undefined,
-      max_price: max_price ? Number(max_price) : undefined,
-      body_type: (body_type as string) || undefined,
+      min_price: req.query.min_price != null ? Number(req.query.min_price) : undefined,
+      max_price: req.query.max_price != null ? Number(req.query.max_price) : undefined,
+      body_type: (req.query.body_type as string | undefined)?.trim(),
     };
 
-    const { items, total } = await listingService.getAllListings(
-      status as string | undefined,
-      p,
-      l,
-      filters
-    );
+    // Validate nhanh min/max
+    if (
+      (filters.min_price != null && !Number.isFinite(filters.min_price)) ||
+      (filters.max_price != null && !Number.isFinite(filters.max_price))
+    ) {
+      return res.status(400).json({ error: "min_price/max_price phải là số" });
+    }
 
-    res.json({
+    const { items, total } = await listingService.getAllListings(status, page, limit, filters);
+
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
+
+    return res.json({
       data: items,
-      meta: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
+      meta: { page, limit, total, totalPages },
     });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    console.error("getAllListings error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
