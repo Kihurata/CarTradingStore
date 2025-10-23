@@ -11,6 +11,7 @@ export interface User {
   password_hash: string;
   name?: string;
   phone?: string;
+  address?: string;
   is_admin: boolean;
   status: UserStatus;
   last_active_at?: Date;

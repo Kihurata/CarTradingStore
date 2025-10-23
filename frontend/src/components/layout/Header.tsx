@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { AuthModal } from "../auth/AuthModal";
@@ -9,6 +9,22 @@ export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const [userName, setUserName] = useState<string>("");
+
+  // ← THÊM: Load user từ localStorage khi component mount (sau reload)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          setUserName(user.name || user.email || "");
+        } catch (err) {
+          console.error("Error parsing stored user:", err);
+          localStorage.removeItem("user");
+        }
+      }
+    }
+  }, []);
 
   const handleAuthClick = (tab: "login" | "register") => {
     setAuthTab(tab);
@@ -20,8 +36,17 @@ export function Header() {
     setIsAuthModalOpen(false);
   };
 
+  // ← SỬA: handleLogout full - clear localStorage và cookie jwt
   const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      // Clear cookie jwt (simulate backend logout nếu cần gọi API /auth/logout)
+      document.cookie = "jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax";
+    }
     setUserName("");
+    // ← THÊM: Optional - gọi API logout nếu backend cần (ví dụ invalidate token)
+    // fetch('/api/auth/logout', { credentials: 'include' }).catch(console.error);
   };
 
   return (

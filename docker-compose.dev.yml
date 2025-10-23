@@ -36,7 +36,7 @@ services:
       DB_PORT: 5432
       DB_NAME: cartradingstore
       DB_USER: postgres
-      DB_PASSWORD: password123
+      DB_PASSWORD: 123456
       PORT: 4000
       JWT_SECRET: your_super_secret_jwt_key_here
     volumes:

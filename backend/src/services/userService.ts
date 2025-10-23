@@ -25,8 +25,8 @@ export const createUser = async (userData: Omit<User, 'id' | 'created_at' | 'upd
   try {
     const newUser = prepareUser(userData); 
     const result = await pool.query(
-      'INSERT INTO users (id, email, password_hash, name, phone, is_admin, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [newUser.id, newUser.email, newUser.password_hash, newUser.name || null, newUser.phone || null, newUser.is_admin, newUser.status]
+      'INSERT INTO users (id, email, password_hash, name, phone, address, is_admin, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [newUser.id, newUser.email, newUser.password_hash, newUser.name || null, newUser.phone || null, newUser.address || null, newUser.is_admin, newUser.status]
     );
     return result.rows[0];
   } catch (error) {

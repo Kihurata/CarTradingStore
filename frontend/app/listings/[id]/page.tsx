@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { api } from "@/lib/api";
 import ReportModal from "@/src/components/listings/ReportModal"; 
+import Gallery from "@/src/components/listings/Gallery"; 
 import { useParams } from "next/navigation"; 
+import { formatPriceVND } from "@/lib/formatCurrency";
 
 interface ListingDetail {
   id: string;
@@ -16,11 +17,16 @@ interface ListingDetail {
   mileage_km: number;
   gearbox: string;
   fuel: string;
+  body_type: string;
+  condition: string;
+  origin: string;
   location_text: string;
   description?: string;
   seller_name?: string;
   seller_phone?: string;
   thumbnail_url?: string;
+  video_url?: string;
+  images?: { id: string; public_url: string; position: number }[];
   created_at?: string;
 }
 
@@ -57,6 +63,72 @@ export default function ListingDetailPage() {
   if (!car) {
     return <div className="p-8 text-center text-red-500">Không tìm thấy xe này.</div>;
   }
+  // Chuẩn hóa danh sách ảnh cho gallery
+  const galleryImages = (() => {
+    if (!car) return [];
+
+    // Sắp xếp ảnh theo position, lọc bỏ ảnh lỗi
+    const imgs = (car.images ?? [])
+      .filter(it => !!it?.public_url)
+      .sort((a, b) => a.position - b.position)
+      .map(it => it.public_url);
+
+    // Đảm bảo có thumbnail_url ở đầu danh sách (nếu chưa có)
+    if (car.thumbnail_url && !imgs.includes(car.thumbnail_url)) {
+      imgs.unshift(car.thumbnail_url);
+    }
+
+    return imgs;
+  })();
+
+  function getYouTubeEmbedUrl(raw: string): string {
+    try {
+      const s = raw.trim();
+
+      // Đã là embed sẵn
+      if (s.startsWith("https://www.youtube.com/embed/") || s.startsWith("https://www.youtube-nocookie.com/embed/")) {
+        return s;
+      }
+
+      const u = new URL(s);
+
+      // youtu.be/<id>
+      if (u.hostname === "youtu.be") {
+        const id = u.pathname.slice(1);
+        return `https://www.youtube.com/embed/${id}${u.search}`; // giữ tham số (t, si, …)
+      }
+
+      // youtube.com/* (watch, shorts, live, playlist…)
+      if (u.hostname.includes("youtube.com")) {
+        // watch?v=<id>
+        const v = u.searchParams.get("v");
+        if (v) return `https://www.youtube.com/embed/${v}${keepParams(u.searchParams)}`;
+
+        // shorts/<id>, live/<id>
+        const m = u.pathname.match(/^\/(shorts|live)\/([^/?#]+)/);
+        if (m) return `https://www.youtube.com/embed/${m[2]}${keepParams(u.searchParams)}`;
+
+        // playlist chỉ phát trong embed nếu có video id; nếu chỉ có list= thì bỏ qua
+        // rơi vào default: trả nguyên (để bạn dễ thấy nếu dán sai)
+      }
+
+      // Không nhận diện được → trả nguyên để bạn còn thấy sai mà sửa
+      return s;
+    } catch {
+      return raw;
+    }
+
+    // Giữ lại 1 số tham số hợp lệ cho embed (t = thời điểm bắt đầu, si,…)
+    function keepParams(sp: URLSearchParams) {
+      const allowed = ["t", "start", "si"];
+      const kept = new URLSearchParams();
+      allowed.forEach(k => { const v = sp.get(k); if (v) kept.set(k, v); });
+      const q = kept.toString();
+      return q ? `?${q}` : "";
+    }
+  }
+
+
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
@@ -64,18 +136,9 @@ export default function ListingDetailPage() {
         {/* Ảnh chính */}
         <div className="md:col-span-2">
           <h1 className="text-2xl font-semibold mt-4 text-black">{car.title}</h1>
-          <p className="text-red-600 text-xl font-bold mt-1">
-            {car.price_vnd.toLocaleString("vi-VN")} ₫
-          </p>
-          <div className="relative w-full h-80 rounded-lg overflow-hidden border">
-            {car.thumbnail_url ? (
-              <Image src={car.thumbnail_url} alt={car.title} fill className="object-cover" />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500">
-                Không có ảnh
-              </div>
-            )}
-          </div>
+          <p className="text-2xl font-bold text-red-600 mt-4 mb-4">{formatPriceVND(car.price_vnd)}</p>
+          {/* Bộ sưu tập ảnh */}
+          <Gallery images={galleryImages} />
           {/* Tình trạng xe */}
           <section className="mt-6">
             <h2 className="text-lg font-semibold mb-3 text-black">Tình trạng xe</h2>
@@ -85,14 +148,14 @@ export default function ListingDetailPage() {
               const leftSpecs = [
                 { label: "Năm SX",     value: car.year?.toString() || "—" },
                 { label: "Nhiên liệu", value: car.fuel || "—" },
-                { label: "Kiểu dáng",  value: (car as any).body_type || "—" }, // nếu có body_type
-                { label: "Tình trạng", value: (car as any).condition || "Xe cũ" },
+                { label: "Kiểu dáng",  value: car.body_type || "—" }, // nếu có body_type
+                { label: "Tình trạng", value: car.condition || "Xe cũ" },
               ];
 
               const rightSpecs = [
                 { label: "Km đã đi",   value: car.mileage_km ? `${car.mileage_km.toLocaleString("vi-VN")} km` : "—" },
                 { label: "Hộp số",     value: car.gearbox || "—" },
-                { label: "Xuất xứ",    value: (car as any).origin || "—" },
+                { label: "Xuất xứ",    value: car.origin || "—" },
                 { label: "Tỉnh thành", value: car.location_text || "—" },
               ];
 
@@ -123,7 +186,25 @@ export default function ListingDetailPage() {
               {car.description || "Không có mô tả chi tiết."}
             </p>
           </div>
-
+          {/* Video giới thiệu (nếu có YouTube URL) */}
+          {car.video_url && (() => {
+            const embed = getYouTubeEmbedUrl(car.video_url);
+            return embed ? (
+              <section className="mt-6">
+                <h3 className="text-lg font-semibold mb-2 text-black">Video giới thiệu</h3>
+                <div className="aspect-video rounded-lg overflow-hidden border shadow-sm">
+                  <iframe
+                    className="w-full h-full border-0"
+                    src={embed}
+                    title="Video giới thiệu xe"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              </section>
+            ) : null;
+          })()}
           {/* Thanh công cụ dưới mô tả */}
           <div className="flex flex-wrap items-center justify-between border-t border-gray-200 mt-6 pt-4 text-sm text-gray-600">
             {/* Nút báo cáo */}

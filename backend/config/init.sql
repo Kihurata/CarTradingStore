@@ -55,14 +55,15 @@ CREATE TRIGGER trg_users_updated
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- provinces (Tỉnh/Thành)
+-- 4) LISTINGS (bài đăng)
+-- 4.1) PROVINCES (Tỉnh/Thành)
 CREATE TABLE IF NOT EXISTS provinces (
   id   SMALLINT PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE
 );
 
--- districts (Quận/Huyện)
+-- 4.2) DISTRICTS (Quận/Huyện)
 CREATE TABLE IF NOT EXISTS districts (
   id          INTEGER PRIMARY KEY,
   province_id SMALLINT NOT NULL REFERENCES provinces(id) ON DELETE RESTRICT,
@@ -72,24 +73,38 @@ CREATE TABLE IF NOT EXISTS districts (
 );
 CREATE INDEX IF NOT EXISTS idx_districts_province ON districts(province_id);
 
--- 4) LISTINGS (bài đăng)
+-- 4.3) Bảng chứa Hãng xe (VD: Hyundai, Toyota, Ford)
+CREATE TABLE IF NOT EXISTS brands (
+  id              SERIAL PRIMARY KEY, -- Dùng SERIAL (số tự tăng) cho đơn giản
+  name            TEXT NOT NULL UNIQUE -- Tên hãng xe phải là duy nhất
+);
+
+-- 4.4) Bảng chứa Dòng xe (VD: Veloster, Santa Fe, Civic)
+CREATE TABLE IF NOT EXISTS models (
+  id              SERIAL PRIMARY KEY,
+  brand_id        INT NOT NULL REFERENCES brands(id) ON DELETE CASCADE, -- Liên kết tới Bảng Hãng xe
+  name            TEXT NOT NULL,
+  
+  -- Đảm bảo một hãng xe không thể có 2 dòng xe trùng tên
+  UNIQUE(brand_id, name),
+  UNIQUE(id, brand_id)
+);
 CREATE TABLE IF NOT EXISTS listings (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   seller_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title           TEXT NOT NULL,
   price_vnd       BIGINT NOT NULL CHECK (price_vnd > 0),
-  brand           TEXT NOT NULL,
-  model           TEXT NOT NULL,
+  brand_id        INT NOT NULL,
+  model_id        INT NOT NULL REFERENCES models(id),  
   year            INT  NOT NULL CHECK (year BETWEEN 1900 AND (EXTRACT(YEAR FROM CURRENT_DATE))::INT + 1),
   mileage_km      INT,
-  gearbox         TEXT,     -- AT | MT | CVT ...
+  gearbox         TEXT,     
   fuel            TEXT,     -- xăng | dầu | hybrid | ev ...
   body_type       TEXT,     -- sedan | suv | ...
   seats           SMALLINT,
-  color_ext       TEXT,
-  color_int       TEXT,
+  color_ext       CHAR(7) CHECK (color_ext ~ '^#([0-9A-Fa-f]{6})$'),
+  color_int       CHAR(7) CHECK (color_int ~ '^#([0-9A-Fa-f]{6})$'),
   origin          TEXT,     -- nhập khẩu | trong nước | ...
-  
   description     TEXT,
   status          listing_status NOT NULL DEFAULT 'pending',
   -- Địa chỉ chuẩn hoá
@@ -98,23 +113,27 @@ CREATE TABLE IF NOT EXISTS listings (
   address_line     TEXT,    
  -- Text gộp để hiển thị & search tự do (tự cập nhật bằng trigger)
   location_text   TEXT,     
+  video_url       TEXT,
   views_count     INT NOT NULL DEFAULT 0,
   edits_count     INT NOT NULL DEFAULT 0,   -- phục vụ đánh giá hoạt động chỉnh sửa
   reports_count   INT NOT NULL DEFAULT 0,
   approved_at     TIMESTAMPTZ,
   approved_by     UUID REFERENCES users(id),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  FOREIGN KEY (model_id, brand_id) REFERENCES models (id, brand_id)
 );
 CREATE INDEX IF NOT EXISTS idx_listings_status_created ON listings(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price_vnd);
-CREATE INDEX IF NOT EXISTS idx_listings_brand ON listings(brand);
+CREATE INDEX IF NOT EXISTS idx_listings_brand ON listings(brand_id);
 CREATE INDEX IF NOT EXISTS idx_listings_year ON listings(year);
 CREATE INDEX IF NOT EXISTS idx_listings_seller ON listings(seller_id);
 CREATE INDEX IF NOT EXISTS idx_listings_region ON listings(province_id, district_id);
 CREATE TRIGGER trg_listings_updated
 BEFORE UPDATE ON listings
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 
 -- Ràng buộc quận thuộc đúng tỉnh
 CREATE OR REPLACE FUNCTION check_listing_location()
@@ -250,8 +269,8 @@ BEGIN
   IF NEW.title IS DISTINCT FROM OLD.title
      OR NEW.price_vnd IS DISTINCT FROM OLD.price_vnd
      OR NEW.description IS DISTINCT FROM OLD.description
-     OR NEW.brand IS DISTINCT FROM OLD.brand
-     OR NEW.model IS DISTINCT FROM OLD.model
+     OR NEW.brand_id IS DISTINCT FROM OLD.brand_id
+     OR NEW.model_id IS DISTINCT FROM OLD.model_id
      OR NEW.year IS DISTINCT FROM OLD.year
      OR NEW.mileage_km IS DISTINCT FROM OLD.mileage_km
      OR NEW.gearbox IS DISTINCT FROM OLD.gearbox

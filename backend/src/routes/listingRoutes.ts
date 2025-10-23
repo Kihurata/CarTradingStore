@@ -1,11 +1,22 @@
+//scr/routes/listingRoutes.ts
 import { Router } from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth";
 import * as listingController from "../controllers/listingController";
+import multer from "multer";
 
+const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
 
 // Danh sách bài đăng
 router.get("/", listingController.getAllListings);
+
+// Địa điểm
+router.get("/locations/provinces", listingController.getProvinces);
+router.get("/locations/districts", listingController.getDistrictsByProvince);
+
+// Brands & Models
+router.get("/brands", listingController.getBrands);
+router.get("/models", listingController.getModelsByBrand);
 
 // Chi tiết 1 bài đăng
 router.get("/:id", listingController.getListing);
@@ -13,8 +24,22 @@ router.get("/:id", listingController.getListing);
 // Bài đăng theo user
 router.get("/user/:userId", authenticateToken, listingController.getUserListings);
 
-// Tạo mới
-router.post("/", authenticateToken, listingController.createListing);
+// 🧩 Tạo mới listing (chấp nhận cả JSON hoặc multipart)
+router.post(
+  "/",
+  authenticateToken,
+  (req, res, next) => {
+    const contentType = req.headers["content-type"] || "";
+    if (contentType.includes("multipart/form-data")) {
+      // Nếu là form có ảnh
+      upload.array("images")(req, res, next);
+    } else {
+      // Nếu là JSON
+      next();
+    }
+  },
+  listingController.createListing
+);
 
 // Sửa
 router.put("/:id", authenticateToken, listingController.editListing);
@@ -29,8 +54,5 @@ router.delete("/:id", authenticateToken, requireAdmin, listingController.deleteL
 router.post("/:id/favorite", authenticateToken, listingController.addFavorite);
 router.post("/:id/comparison", authenticateToken, listingController.addComparison);
 router.post("/:id/report", authenticateToken, listingController.reportViolation);
-
-router.get("/locations/provinces", listingController.getProvinces);
-router.get("/locations/districts", listingController.getDistrictsByProvince);
 
 export default router;
