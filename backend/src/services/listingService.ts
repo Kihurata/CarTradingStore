@@ -77,26 +77,50 @@ export async function getListingById(id: string) {
       l.*,
       b.name AS brand,
       m.name AS model,
-      u.name AS seller_name,
+      u.name  AS seller_name,
       u.phone AS seller_phone,
-      (
-        SELECT li.public_url
-        FROM listing_images li
-        WHERE li.listing_id = l.id
-        ORDER BY li.position ASC, li.created_at ASC
-        LIMIT 1
-      ) AS thumbnail_url
+
+      -- Ảnh đại diện: lấy ảnh approved đầu tiên theo position
+      thumb.public_url AS thumbnail_url,
+
+      -- Mảng ảnh gallery (đã sắp theo position)
+      COALESCE(imgs.images, '[]'::json) AS images
+
     FROM listings l
     JOIN brands b ON l.brand_id = b.id
     JOIN models m ON l.model_id = m.id
     LEFT JOIN users u ON u.id = l.seller_id
+
+    -- Lấy thumbnail
+    LEFT JOIN LATERAL (
+      SELECT li.public_url
+      FROM listing_images li
+      WHERE li.listing_id = l.id AND li.is_approved = TRUE
+      ORDER BY li.position ASC, li.created_at ASC
+      LIMIT 1
+    ) AS thumb ON TRUE
+
+    -- Lấy toàn bộ ảnh cho gallery
+    LEFT JOIN LATERAL (
+      SELECT json_agg(
+               json_build_object(
+                 'id', li.id,
+                 'public_url', li.public_url,
+                 'position', li.position
+               )
+               ORDER BY li.position ASC, li.created_at ASC
+             ) AS images
+      FROM listing_images li
+      WHERE li.listing_id = l.id AND li.is_approved = TRUE
+    ) AS imgs ON TRUE
+
     WHERE l.id::text = $1
     LIMIT 1;
   `;
-
   const { rows } = await pool.query(sql, [id]);
   return rows[0] || null;
 }
+
 
 export async function createListing(data: {
   seller_id: string;

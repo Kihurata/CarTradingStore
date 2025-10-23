@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { api } from "@/lib/api";
 import ReportModal from "@/src/components/listings/ReportModal"; 
+import Gallery from "@/src/components/listings/Gallery"; 
 import { useParams } from "next/navigation"; 
 
 interface ListingDetail {
@@ -16,11 +16,15 @@ interface ListingDetail {
   mileage_km: number;
   gearbox: string;
   fuel: string;
+  body_type: string;
+  condition: string;
+  origin: string;
   location_text: string;
   description?: string;
   seller_name?: string;
   seller_phone?: string;
   thumbnail_url?: string;
+  images?: { id: string; public_url: string; position: number }[];
   created_at?: string;
 }
 
@@ -57,6 +61,23 @@ export default function ListingDetailPage() {
   if (!car) {
     return <div className="p-8 text-center text-red-500">Không tìm thấy xe này.</div>;
   }
+  // Chuẩn hóa danh sách ảnh cho gallery
+  const galleryImages = (() => {
+    if (!car) return [];
+
+    // Sắp xếp ảnh theo position, lọc bỏ ảnh lỗi
+    const imgs = (car.images ?? [])
+      .filter(it => !!it?.public_url)
+      .sort((a, b) => a.position - b.position)
+      .map(it => it.public_url);
+
+    // Đảm bảo có thumbnail_url ở đầu danh sách (nếu chưa có)
+    if (car.thumbnail_url && !imgs.includes(car.thumbnail_url)) {
+      imgs.unshift(car.thumbnail_url);
+    }
+
+    return imgs;
+  })();
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
@@ -67,15 +88,8 @@ export default function ListingDetailPage() {
           <p className="text-red-600 text-xl font-bold mt-1">
             {car.price_vnd.toLocaleString("vi-VN")} ₫
           </p>
-          <div className="relative w-full h-80 rounded-lg overflow-hidden border">
-            {car.thumbnail_url ? (
-              <Image src={car.thumbnail_url} alt={car.title} fill className="object-cover" />
-            ) : (
-              <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500">
-                Không có ảnh
-              </div>
-            )}
-          </div>
+          {/* Bộ sưu tập ảnh */}
+          <Gallery images={galleryImages} />
           {/* Tình trạng xe */}
           <section className="mt-6">
             <h2 className="text-lg font-semibold mb-3 text-black">Tình trạng xe</h2>
@@ -85,14 +99,14 @@ export default function ListingDetailPage() {
               const leftSpecs = [
                 { label: "Năm SX",     value: car.year?.toString() || "—" },
                 { label: "Nhiên liệu", value: car.fuel || "—" },
-                { label: "Kiểu dáng",  value: (car as any).body_type || "—" }, // nếu có body_type
-                { label: "Tình trạng", value: (car as any).condition || "Xe cũ" },
+                { label: "Kiểu dáng",  value: car.body_type || "—" }, // nếu có body_type
+                { label: "Tình trạng", value: car.condition || "Xe cũ" },
               ];
 
               const rightSpecs = [
                 { label: "Km đã đi",   value: car.mileage_km ? `${car.mileage_km.toLocaleString("vi-VN")} km` : "—" },
                 { label: "Hộp số",     value: car.gearbox || "—" },
-                { label: "Xuất xứ",    value: (car as any).origin || "—" },
+                { label: "Xuất xứ",    value: car.origin || "—" },
                 { label: "Tỉnh thành", value: car.location_text || "—" },
               ];
 
