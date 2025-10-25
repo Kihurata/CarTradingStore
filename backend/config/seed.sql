@@ -1,10 +1,19 @@
 -- ===============================================
 -- DỮ LIỆU MẪU CHO CAR TRADING STORE
 -- ===============================================
+-- Bật extension pgcrypto (chỉ cần chạy 1 lần)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 1️⃣ USER MẪU (người bán)
+-- Tạo user mẫu với mật khẩu "123456"
 INSERT INTO users (id, email, password_hash, name, phone, is_admin)
-VALUES (gen_random_uuid(), 'seller@example.com', 'hash', 'Nguyen Van A', '0909123456', false)
+VALUES (
+  gen_random_uuid(),
+  'seller@example.com',
+  crypt('123456', gen_salt('bf', 12)), -- bcrypt hash của 123456
+  'Nguyen Van A',
+  '0909123456',
+  false
+)
 ON CONFLICT (email) DO NOTHING;
 
 -- INSERT PROVINCES & DISTRICTS

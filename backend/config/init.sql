@@ -20,7 +20,15 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_type') THEN
-    CREATE TYPE report_type AS ENUM ('seeding','fake','scam','other');
+    CREATE TYPE report_type AS ENUM (
+      'fraud',
+      'unreachable',
+      'wrong_price',
+      'duplicate',
+      'sold',
+      'incorrect_info',
+      'other'
+    );
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
@@ -215,7 +223,8 @@ CREATE TABLE IF NOT EXISTS comparisons (
 CREATE TABLE IF NOT EXISTS reports (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   listing_id    UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
-  reporter_id   UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  reporter_id   UUID REFERENCES users(id) ON DELETE SET NULL, -- có thể NULl khi ẩn danh
+  reporter_phone TEXT; -- dùng khi báo cáo ẩn danh
   type          report_type NOT NULL DEFAULT 'other',
   note          TEXT,
   status        report_status NOT NULL DEFAULT 'new',
