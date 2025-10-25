@@ -6,7 +6,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
   listingId: string;
-  isLoggedIn?: boolean; // true nếu đã đăng nhập
 };
 
 // Map label -> enum trong DB
@@ -20,12 +19,31 @@ const REASONS = [
   { label: "Khác", value: "other" },
 ] as const;
 
-export default function ReportModal({ open, onClose, listingId, isLoggedIn = false }: Props) {
+export default function ReportModal({ open, onClose, listingId }: Props) {
   const [reason, setReason] = useState<(typeof REASONS)[number]["value"] | "">("");
   const [content, setContent] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+
+  const loadUserData = () => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("user");
+      console.log("🔍 DEBUG - Stored user from localStorage:", storedUser);
+      
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          console.log("🔍 DEBUG - User phone from localStorage:", user.phone);
+          setPhone(user.phone || "");
+        } catch (err) {
+          console.error("Error parsing stored user:", err);
+        }
+      } else {
+        console.log("🔍 DEBUG - No user found in localStorage");
+      }
+    }
+  };
 
   // Đóng khi bấm ESC
   useEffect(() => {
@@ -34,6 +52,14 @@ export default function ReportModal({ open, onClose, listingId, isLoggedIn = fal
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Load user data khi mở modal
+  useEffect(() => {
+    if (open) {
+      console.log("🔍 DEBUG - Modal opened, loading user data...");
+      loadUserData();
+    }
+  }, [open]);
 
   // Click backdrop để đóng
   const onBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -46,11 +72,11 @@ export default function ReportModal({ open, onClose, listingId, isLoggedIn = fal
     return /^((\+?84)|0)\d{9,10}$/.test(cleaned);
   };
 
-  // Rule: cần "type" (reason). Nếu user ẩn danh => bắt buộc phone hợp lệ.
-  const needPhone = !isLoggedIn;
-  const isValid =
-    !!reason &&
-    (!needPhone || (phone.trim().length > 0 && isVNPhone(phone.trim())));
+  // Kiểm tra xem có user trong localStorage không
+  const hasUser = typeof window !== "undefined" && !!localStorage.getItem("user");
+  const needPhone = !hasUser; // Cần phone nếu không có user
+  const hasValidPhone = phone.trim().length > 0 && isVNPhone(phone.trim());
+  const isValid = !!reason && (!needPhone || hasValidPhone);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,18 +94,22 @@ export default function ReportModal({ open, onClose, listingId, isLoggedIn = fal
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        credentials: "include",
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${res.status}`);
+      }
 
       alert("Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét sớm nhất.");
       setReason("");
       setContent("");
       setPhone("");
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Gửi báo cáo thất bại, vui lòng thử lại.");
+      alert(err.message || "Gửi báo cáo thất bại, vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -169,9 +199,13 @@ export default function ReportModal({ open, onClose, listingId, isLoggedIn = fal
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-[15px] text-black placeholder:text-gray-400 focus:outline-none focus:border-gray-400"
               inputMode="tel"
               required={needPhone}
+              readOnly={hasUser && phone} // Readonly nếu có user và có số phone
             />
             {needPhone && phone && !isVNPhone(phone.trim()) && (
               <p className="mt-1 text-sm text-red-600">Số điện thoại chưa đúng định dạng.</p>
+            )}
+            {hasUser && !phone && (
+              <p className="mt-1 text-sm text-gray-600">Không tìm thấy số điện thoại trong tài khoản.</p>
             )}
           </div>
 

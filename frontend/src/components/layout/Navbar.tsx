@@ -2,9 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export function Navbar() {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const user = localStorage.getItem("user");
+      setIsLoggedIn(!!user);
+    }
+  }, []);
+
+  const handleCreateListing = () => {
+    if (!isLoggedIn) {
+      alert("Vui lòng đăng nhập để đăng tin");
+      return;
+    }
+    router.push("/create-listing");
+  };
 
   return (
     <nav className="bg-white border-b shadow-sm">
@@ -25,8 +42,12 @@ export function Navbar() {
         </div>
 
         <button
-          onClick={() => router.push("/create-listing")}
-          className="bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[13px] font-semibold px-5 py-2 rounded transition-colors uppercase tracking-wide"
+          onClick={handleCreateListing}
+          className={`${
+            isLoggedIn 
+              ? "bg-[#5CB85C] hover:bg-[#4CAE4C] cursor-pointer" 
+              : "bg-gray-400 cursor-not-allowed"
+          } text-white text-[13px] font-semibold px-5 py-2 rounded transition-colors uppercase tracking-wide`}
         >
           ĐĂNG TIN
         </button>

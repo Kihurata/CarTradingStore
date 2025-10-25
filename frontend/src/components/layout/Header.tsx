@@ -37,17 +37,28 @@ export function Header() {
   };
 
   // ← SỬA: handleLogout full - clear localStorage và cookie jwt
-  const handleLogout = () => {
+const handleLogout = async () => {
+  try {
+    // 1. Gọi API logout backend để xóa cookie
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include', // ← QUAN TRỌNG: gửi cookie
+    });
+  } catch (error) {
+    console.error('Logout API error:', error);
+  } finally {
+    // 2. Luôn xóa localStorage và reload trang
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      // Clear cookie jwt (simulate backend logout nếu cần gọi API /auth/logout)
-      document.cookie = "jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax";
+      document.cookie = "jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
     setUserName("");
-    // ← THÊM: Optional - gọi API logout nếu backend cần (ví dụ invalidate token)
-    // fetch('/api/auth/logout', { credentials: 'include' }).catch(console.error);
-  };
+    
+    // 3. Reload trang để reset hoàn toàn state (bao gồm ReportModal)
+    window.location.href = "/";
+  }
+};
 
   return (
     <>
