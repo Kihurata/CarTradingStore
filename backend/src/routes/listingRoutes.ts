@@ -18,11 +18,12 @@ router.get("/locations/districts", listingController.getDistrictsByProvince);
 router.get("/brands", listingController.getBrands);
 router.get("/models", listingController.getModelsByBrand);
 
+// Bài đăng của chính user (self)
+router.get("/self", authenticateToken, listingController.getUserListings);
+
 // Chi tiết 1 bài đăng
 router.get("/:id", listingController.getListing);
 
-// Bài đăng theo user
-router.get("/user/:userId", authenticateToken, listingController.getUserListings);
 
 // 🧩 Tạo mới listing (chấp nhận cả JSON hoặc multipart)
 router.post(

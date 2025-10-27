@@ -78,6 +78,75 @@ export async function getAllListings(
   return { items, total };
 }
 
+export async function getUserListings(
+  userId: string,
+  page = 1,
+  limit = 10,
+  status: string = "all"
+): Promise<{
+  items: (Listing & {
+    thumbnail_url?: string;
+    seller_name?: string | null;
+    seller_phone?: string | null;
+  })[];
+  total: number;
+}> {
+  const offset = (page - 1) * limit;
+
+  const params: (string | number)[] = [userId];
+  const where: string[] = ["l.seller_id = $1"];
+
+  // chỉ thêm điều kiện status nếu khác "all"
+  if (status !== "all") {
+    params.push(status);
+    where.push(`l.status = $${params.length}`);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  // limit/offset luôn ở 2 tham số cuối
+  params.push(limit);
+  params.push(offset);
+
+  const sql = `
+    SELECT
+      l.*,
+      b.name AS brand,
+      m.name AS model,
+      u.name  AS seller_name,
+      u.phone AS seller_phone,
+      (
+        SELECT li.public_url
+        FROM listing_images li
+        WHERE li.listing_id = l.id
+        ORDER BY li.position ASC, li.created_at ASC
+        LIMIT 1
+      ) AS thumbnail_url,
+      COUNT(*) OVER() AS total_count
+    FROM listings l
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
+    JOIN users  u ON u.id = l.seller_id
+    ${whereSql}
+    ORDER BY l.created_at DESC
+    LIMIT $${params.length - 1} OFFSET $${params.length};
+  `;
+
+  const { rows } = await pool.query(sql, params);
+
+  const total = rows[0] ? Number(rows[0].total_count) : 0;
+  const items = rows.map(({ total_count, ...rest }) =>
+    rest as Listing & {
+      thumbnail_url?: string;
+      seller_name?: string | null;
+      seller_phone?: string | null;
+    }
+  );
+
+  return { items, total };
+}
+
+
 
 export async function getListingById(id: string) {
   const sql = `
@@ -297,24 +366,6 @@ export async function getAllListingsAdmin() {
   return rows;
 }
 
-export async function getUserListings(userId: string, page: number = 1, limit: number = 10) {
-  const offset = (page - 1) * limit;
-  const sql = `
-    SELECT
-      l.*,
-      b.name AS brand,
-      m.name AS model
-    FROM listings l
-    JOIN brands b ON l.brand_id = b.id
-    JOIN models m ON l.model_id = m.id
-    WHERE l.seller_id = $1
-    ORDER BY l.created_at DESC
-    LIMIT $2 OFFSET $3
-  `;
-  const { rows } = await pool.query(sql, [userId, limit, offset]);
-  // === HẾT THAY ĐỔI ===
-  return rows;
-}
 
 export async function addFavorite(userId: string, listingId: string) {
   const { rows } = await pool.query(

@@ -133,14 +133,32 @@ export const approveListing = async (req: Request, res: Response) => {
 
 export const getUserListings = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
-    const { page = '1', limit = '10' } = req.query;
-    const listings = await listingService.getUserListings(userId, parseInt(page as string), parseInt(limit as string));
-    res.json({ data: listings });
+    const userId = (req.user as any)?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Đồng bộ cách đọc query với getAllListings
+    // (giữ nguyên limit mặc định bạn thích; có thể 9 để khớp UI, hoặc 12 như public)
+    const page  = toPositiveInt(req.query.page, 1);
+    const limit = toPositiveInt(req.query.limit, 9, 60);
+
+    // (tuỳ chọn) status của bài đăng cá nhân: "all" | "draft" | "pending" | "approved" | "rejected"
+    const status = ((req.query.status as string | undefined)?.trim() || "all").toLowerCase();
+
+    // Gọi service tương ứng
+    const { items, total } = await listingService.getUserListings(userId, page, limit, status);
+
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
+
+    return res.json({
+      data: items,
+      meta: { page, limit, total, totalPages },
+    });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    console.error("getUserListings error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
+
 
 export const addFavorite = async (req: Request, res: Response) => {
   try {
