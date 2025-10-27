@@ -8,7 +8,7 @@ import authRoutes from "./routes/authRoutes";
 import pool from "./config/database";
 import logger from "./utils/logger";
 import apiProxyRoutes from "./routes/apiProxyRoutes";
-
+import reportRoutes from './routes/reportRoutes';
 const app: Application = express();
 
 app.use(cookieParser());
@@ -45,7 +45,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/listings", listingRoutes);
-
+app.use('/api/reports', reportRoutes);
 // API Proxy - ĐƯA XUỐNG CUỐI CÙNG (chỉ xử lý các routes chưa được xử lý)
 app.use("/api", apiProxyRoutes);
 

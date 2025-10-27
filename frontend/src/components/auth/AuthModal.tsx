@@ -80,21 +80,18 @@ const handleSubmit = async (e: React.FormEvent) => {
       const { token, user } = data;
       if (!token || !user) throw new Error("Thiếu dữ liệu phản hồi từ server.");
 
-      if (typeof window !== "undefined") {
+        if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
-
-        // ✅ Thêm: Lưu token vào cookie để middleware backend đọc (match req.cookies.jwt)
-        document.cookie = `jwt=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax; Secure=false`; // 7 ngày, dev: secure=false
-        console.log("New JWT cookie set from AuthModal:", token.substring(0, 20) + "...");
+        // 🚨 XÓA phần set cookie - backend đã set rồi
       }
-
       if (onAuthSuccess) {
         onAuthSuccess(user.name || user.email);
       }
 
       alert("✅ Đăng nhập thành công!");
       onClose();
+      window.location.reload();
     }
   } catch (err: unknown) {
     console.error("Auth error:", err);

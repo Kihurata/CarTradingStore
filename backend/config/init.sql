@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS reports (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   listing_id    UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
   reporter_id   UUID REFERENCES users(id) ON DELETE SET NULL, -- có thể NULl khi ẩn danh
-  reporter_phone TEXT; -- dùng khi báo cáo ẩn danh
+  reporter_phone TEXT, -- dùng khi báo cáo ẩn danh
   type          report_type NOT NULL DEFAULT 'other',
   note          TEXT,
   status        report_status NOT NULL DEFAULT 'new',

@@ -61,6 +61,7 @@ export const register = async (req: Request, res: Response) => {
       secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+       path: "/",
     });
 
     return res.status(201).json({ 
@@ -127,6 +128,7 @@ export const login = async (req: import("express").Request, res: import("express
       secure: process.env.NODE_ENV === "production", // true nếu HTTPS production
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày (ms)
+      path: "/",
     });
 
     // Chuẩn hoá dữ liệu trả về cho frontend
@@ -201,6 +203,7 @@ export const logout = async (req: Request, res: Response) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    path: "/",
   });
   res.json({ success: true, message: "Đăng xuất thành công" });
 };

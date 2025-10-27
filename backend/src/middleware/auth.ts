@@ -31,7 +31,27 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const authenticateTokenOptional = (req: Request, res: Response, next: NextFunction) => {
+  const token = req.cookies.jwt;
+  if (!token) {
+    req.user = undefined; // Anonymous: set null-like
+    return next(); // Tiếp tục, không block
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const decoded = jwt.verify(token, secret) as JwtPayload;
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.warn("JWT verify failed (optional mode), treating as anonymous:", err);
+    req.user = undefined; // Invalid token → treat as anonymous
+    next(); // Vẫn tiếp tục
+  }
+};
+
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user?.is_admin) return res.status(403).json({ error: 'Admin required' });
   next();
 };
+
