@@ -1,7 +1,7 @@
 // src/components/layout/AdminNavbar.tsx
 "use client";
 
-import { BaseNavbar } from "./BaseNavbar";
+import { BaseNavbar } from "../layout/BaseNavbar";
 
 export function AdminNavbar() {
   return (
@@ -9,7 +9,6 @@ export function AdminNavbar() {
       links={[
         { href: "/admin/listings", label: "QUẢN LÝ BÀI ĐĂNG" },
         { href: "/admin/users", label: "NGƯỜI DÙNG" },
-        { href: "/admin/reports", label: "BÁO CÁO VI PHẠM" },
       ]}
     />
   );

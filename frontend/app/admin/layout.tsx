@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import "../globals.css";
+import { Header } from "@/src/components/layout/Header";
 
-import { AdminNavbar } from "@/src/components/layout/AdminNavbar";
+import { AdminNavbar } from "@/src/components/admin/AdminNavbar";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar riêng cho admin */}
+      <Header />
       <AdminNavbar />
 
       {/* Nội dung trang admin */}

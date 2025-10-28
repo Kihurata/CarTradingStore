@@ -11,7 +11,7 @@ export default function AdminListingCard({ data }: { data: Listing }) {
   const RightButtons = (
     <div className="flex flex-col gap-2 items-end">
       <button
-        className="px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
+        className="text-black px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
         onClick={(e) => {
           e.preventDefault();
           // TODO: gọi API duyệt
@@ -21,7 +21,7 @@ export default function AdminListingCard({ data }: { data: Listing }) {
       </button>
 
       <button
-        className="px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
+        className="text-black px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
         onClick={(e) => {
           e.preventDefault();
           router.push(`/admin/listings/${data.id}/edit`);
@@ -31,7 +31,7 @@ export default function AdminListingCard({ data }: { data: Listing }) {
       </button>
 
       <button
-        className="px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
+        className="text-black px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
         onClick={(e) => {
           e.preventDefault();
           // TODO: mở modal cập nhật trạng thái
@@ -41,7 +41,7 @@ export default function AdminListingCard({ data }: { data: Listing }) {
       </button>
 
       <button
-        className="px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
+        className="text-black px-3 py-1.5 rounded-lg text-[13px] border bg-white hover:bg-gray-100 inline-flex items-center gap-1"
         onClick={(e) => {
           e.preventDefault();
           router.push(`/admin/reports?listingId=${data.id}`);
@@ -56,7 +56,7 @@ export default function AdminListingCard({ data }: { data: Listing }) {
     <div className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
       {/* Admin: KHÔNG bọc toàn card bằng Link để nút hoạt động độc lập.
          Nếu muốn tiêu đề có link, ListingRow đã hỗ trợ titleAsLink */}
-      <ListingRow data={data} rightArea={RightButtons} titleAsLink />
+      <ListingRow data={data} rightArea={RightButtons} titleAsLink variant="admin" />
     </div>
   );
 }

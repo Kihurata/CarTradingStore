@@ -28,6 +28,7 @@ export function ListingCard({ data }: { data: Listing }) {
             Gọi ngay
           </button>
         }
+        variant="public"
       />
     </Link>
   );
