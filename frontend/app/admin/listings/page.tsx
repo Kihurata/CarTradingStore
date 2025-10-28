@@ -48,22 +48,34 @@ export default async function AdminListingsPage({
 
   return (
     <main className="max-w-7xl mx-auto py-10 px-6">
-      {/* Bộ lọc trạng thái đơn giản */}
-      <div className="mb-4 flex items-center gap-2 text-sm">
-        {["all", "pending", "approved", "rejected", "draft"].map((s) => {
-          const href = s === "all" ? "?" : `?status=${s}`;
-          const active = s === status;
+      {/* Tabs trạng thái */}
+      <div className="mb-6 flex items-center gap-14">
+        {[
+          { label: "PHÊ DUYỆT TIN", value: "pending",  href: "?status=pending"  },
+          { label: "ĐANG BÁN", value: "approved", href: "?status=approved" },
+          { label: "KHÔNG DUYỆT", value: "rejected", href: "?status=rejected" },
+          // Nếu có trang thống kê riêng, đổi href cho đúng (vd: /admin?tab=stats hoặc /admin/stats)
+          { label: "THỐNG KÊ", value: "stats",    href: "/admin?tab=stats"  },
+        ].map((t) => {
+          const active = t.value === status; // underline khi tab khớp status
+          const isStats = t.value === "stats";
+
           return (
             <a
-              key={s}
-              href={href}
-              className={`px-3 py-1 rounded border ${active ? "bg-black text-white" : ""}`}
+              key={t.value}
+              href={t.href}
+              className="relative pb-2 text-[16px] md:text-[18px] font-extrabold uppercase tracking-wide text-gray-900 hover:text-gray-700"
             >
-              {s}
+              {t.label}
+              {/* Gạch chân xanh chỉ hiện khi active và không áp dụng cho tab 'Thống kê' */}
+              {active && !isStats && (
+                <span className="absolute left-1/2 -translate-x-1/2 bottom-0 block h-[3px] w-20 bg-[#3B6A84] rounded" />
+              )}
             </a>
           );
         })}
       </div>
+
 
       {data.length === 0 ? (
         <p className="text-gray-600">Không có bài đăng nào.</p>

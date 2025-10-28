@@ -7,7 +7,7 @@ export function AdminNavbar() {
   return (
     <BaseNavbar
       links={[
-        { href: "/admin/listings", label: "QUẢN LÝ BÀI ĐĂNG" },
+        { href: "/admin/listings", label: "THÔNG TIN ĐĂNG BÁN XE" },
         { href: "/admin/users", label: "NGƯỜI DÙNG" },
       ]}
     />
