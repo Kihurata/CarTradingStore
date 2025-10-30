@@ -120,14 +120,20 @@ export const createListing = async (req: Request, res: Response) => {
   }
 };
 
-export const approveListing = async (req: Request, res: Response) => {
+export const updateListingStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const approver_id = (req.user as any).id;
-    const listing = await listingService.updateListingStatus(id, ListingStatus.APPROVED, approver_id);
-    res.json({ data: listing });
-  } catch (err) {
-    res.status(404).json({ error: (err as Error).message });
+    const { status } = req.body; // Từ body: 'approved' hoặc 'rejected'
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: "Status phải là 'approved' hoặc 'rejected'" });
+    }
+    const approver_id = (req.user as any).id; // Từ JWT
+    if (!approver_id) return res.status(401).json({ error: "Unauthorized" });
+    const result = await listingService.updateListingStatus(id, status, approver_id);
+    res.json({ data: result, message: `Status updated to ${status}` });
+  } catch (err: any) {
+    console.error("Update status error:", err);
+    res.status(err.status || 404).json({ error: err.message || "Listing not found" });
   }
 };
 

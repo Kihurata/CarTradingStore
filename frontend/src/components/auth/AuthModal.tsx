@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation"; // Thêm: import useRouter
 import { X } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -11,6 +12,7 @@ type User = {
   email: string;
   phone?: string;
   address?: string;
+  is_admin?: boolean; // Thêm: is_admin
 };
 
 type AuthResponse = {
@@ -31,6 +33,7 @@ export function AuthModal({
   defaultTab = "login",
   onAuthSuccess,
 }: AuthModalProps) {
+  const router = useRouter(); // Thêm: hook router
   const [activeTab, setActiveTab] = useState<"login" | "register">(defaultTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,7 +85,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
         if (typeof window !== "undefined") {
         localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("user", JSON.stringify(user)); // Bây giờ user có is_admin
         // 🚨 XÓA phần set cookie - backend đã set rồi
       }
       if (onAuthSuccess) {
@@ -91,7 +94,13 @@ const handleSubmit = async (e: React.FormEvent) => {
 
       alert("✅ Đăng nhập thành công!");
       onClose();
-      window.location.reload();
+
+      // Thêm: Kiểm tra is_admin và redirect nếu true (thay reload)
+      if (user.is_admin) {
+        router.push('/admin'); // Redirect đến /admin nếu admin
+      } else {
+        window.location.reload(); // Giữ reload cho user thường (hoặc thay bằng router.refresh() nếu muốn client-side)
+      }
     }
   } catch (err: unknown) {
     console.error("Auth error:", err);
