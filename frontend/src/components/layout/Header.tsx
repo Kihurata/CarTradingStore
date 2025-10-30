@@ -9,8 +9,9 @@ export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const [userName, setUserName] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
-  // ← THÊM: Load user từ localStorage khi component mount (sau reload)
+  // Load user info
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUser = localStorage.getItem("user");
@@ -18,6 +19,8 @@ export function Header() {
         try {
           const user = JSON.parse(storedUser);
           setUserName(user.name || user.email || "");
+          // 👇 Kiểm tra role
+          if (user.role === "admin") setIsAdmin(true);
         } catch (err) {
           console.error("Error parsing stored user:", err);
           localStorage.removeItem("user");
@@ -36,47 +39,45 @@ export function Header() {
     setIsAuthModalOpen(false);
   };
 
-  // ← SỬA: handleLogout full - clear localStorage và cookie jwt
-const handleLogout = async () => {
-  try {
-    // 1. Gọi API logout backend để xóa cookie
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include', // ← QUAN TRỌNG: gửi cookie
-    });
-  } catch (error) {
-    console.error('Logout API error:', error);
-  } finally {
-    // 2. Luôn xóa localStorage và reload trang
-    if (typeof window !== "undefined") {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       document.cookie = "jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      setUserName("");
+      setIsAdmin(false);
+      window.location.href = "/";
     }
-    setUserName("");
-    
-    // 3. Reload trang để reset hoàn toàn state (bao gồm ReportModal)
-    window.location.href = "/";
-  }
-};
+  };
 
   return (
     <>
       <header className="sticky top-0 z-50 bg-white border-b">
         <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-baseline gap-0.5">
+          {/* 👇 Nếu là admin → link tới /admin */}
+          <Link
+            href={isAdmin ? "/admin" : "/"}
+            className="flex items-baseline gap-0.5"
+          >
             <span className="text-[28px] font-bold text-[#0066CC] leading-none">oto</span>
             <span className="text-[20px] font-medium text-gray-700 leading-none">.com.vn</span>
           </Link>
 
           <div className="flex items-center gap-6">
-            <Link
-              href="/favorites"
-              className="flex items-center justify-center w-9 h-9 hover:bg-gray-50 rounded-full transition-colors"
-              aria-label="Yêu thích"
-            >
-              <Heart className="h-5 w-5 text-gray-600" />
-            </Link>
+            {/* 👇 Chỉ user thường mới có icon trái tim */}
+            {!isAdmin && (
+              <Link
+                href="/favorites"
+                className="flex items-center justify-center w-9 h-9 hover:bg-gray-50 rounded-full transition-colors"
+                aria-label="Yêu thích"
+              >
+                <Heart className="h-5 w-5 text-gray-600" />
+              </Link>
+            )}
 
             {userName ? (
               <div className="flex items-center gap-3">

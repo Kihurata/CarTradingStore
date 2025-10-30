@@ -11,6 +11,7 @@ type Props = {
   rightArea?: ReactNode;                 // cột nút/hành động (ngoài cùng bên phải)
   titleAsLink?: boolean;
   variant?: "public" | "admin";
+  imgPriority?: boolean; 
 };
 
 export default function ListingRow({
@@ -18,6 +19,7 @@ export default function ListingRow({
   rightArea,
   titleAsLink = true,
   variant = "public",
+  imgPriority = false,
 }: Props) {
   const SellerInfo = (
     <div className="mt-3 text-[13px] text-gray-700">
@@ -57,7 +59,7 @@ export default function ListingRow({
         {/* Cột 1: Ảnh */}
         <div className="relative w-56 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
           {data.thumbnail_url ? (
-            <Image src={data.thumbnail_url} alt={data.title} fill className="object-cover" sizes="224px" />
+            <Image src={data.thumbnail_url} alt={data.title} fill className="object-cover" sizes="224px" priority={imgPriority} />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Không có ảnh</div>
           )}
@@ -101,7 +103,7 @@ export default function ListingRow({
       {/* Cột 1: Ảnh */}
       <div className="relative w-56 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
         {data.thumbnail_url ? (
-          <Image src={data.thumbnail_url} alt={data.title} fill className="object-cover" sizes="224px" />
+          <Image src={data.thumbnail_url} alt={data.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 224px" priority={imgPriority}  />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Không có ảnh</div>
         )}

@@ -2,7 +2,7 @@ export enum ListingStatus {
   DRAFT = "draft",
   PENDING = "pending",
   APPROVED = "approved",
-  HIDDEN = "hidden",
+  REJECTED = "rejected",
   SOLD = "sold",
 }
 

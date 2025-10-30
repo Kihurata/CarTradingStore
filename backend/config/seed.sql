@@ -12,7 +12,7 @@ VALUES (
   crypt('123456', gen_salt('bf', 12)), -- bcrypt hash của 123456
   'Nguyen Van A',
   '0909123456',
-  false
+  true
 )
 ON CONFLICT (email) DO NOTHING;
 
