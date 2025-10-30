@@ -16,7 +16,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'listing_status') THEN
-    CREATE TYPE listing_status AS ENUM ('draft','pending','approved','hidden','sold');
+    CREATE TYPE listing_status AS ENUM ('draft','pending','approved','rejected','sold');
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_type') THEN
