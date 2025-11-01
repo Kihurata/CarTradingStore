@@ -6,12 +6,21 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Tạo user mẫu với mật khẩu "123456"
 INSERT INTO users (id, email, password_hash, name, phone, is_admin)
-VALUES (
+VALUES
+(
   gen_random_uuid(),
   'seller@example.com',
   crypt('123456', gen_salt('bf', 12)), -- bcrypt hash của 123456
   'Nguyen Van A',
   '0909123456',
+  false
+),
+(
+  gen_random_uuid(),
+  'buyer@example.com',
+  crypt('password123', gen_salt('bf', 12)), -- bcrypt hash của password123
+  'Tran Thi B',
+  '0988765432',
   true
 )
 ON CONFLICT (email) DO NOTHING;

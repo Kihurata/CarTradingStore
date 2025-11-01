@@ -99,9 +99,9 @@ export const login = async (req: import("express").Request, res: import("express
       return res.status(400).json({ error: "Thiếu email hoặc mật khẩu" });
     }
 
-    // Tìm user theo email
+    // Tìm user theo email (thêm is_admin vào SELECT)
     const result = await pool.query(
-      "SELECT id, name, email, phone, address, password_hash FROM users WHERE email = $1 LIMIT 1",
+      "SELECT id, name, email, phone, address, password_hash, is_admin FROM users WHERE email = $1 LIMIT 1",
       [email]
     );
     const user = result.rows[0];
@@ -115,9 +115,9 @@ export const login = async (req: import("express").Request, res: import("express
       return res.status(401).json({ error: "Email hoặc mật khẩu không đúng" });
     }
 
-    // Tạo JWT với payload khớp middleware (id thay vì sub, thêm is_admin: false)
+    // Tạo JWT với payload khớp middleware (id thay vì sub, thêm is_admin từ DB)
     const token = jwt.sign(
-      { id: user.id, email: user.email, is_admin: false }, // Sửa payload để match JwtPayload
+      { id: user.id, email: user.email, is_admin: user.is_admin }, // Sửa: dùng user.is_admin từ DB
       process.env.JWT_SECRET || "dev_secret_change_me",
       { expiresIn: "7d" }
     );
@@ -131,7 +131,7 @@ export const login = async (req: import("express").Request, res: import("express
       path: "/",
     });
 
-    // Chuẩn hoá dữ liệu trả về cho frontend
+    // Chuẩn hoá dữ liệu trả về cho frontend (thêm is_admin)
     return res.json({
       token,
       user: {
@@ -140,6 +140,7 @@ export const login = async (req: import("express").Request, res: import("express
         email: user.email,
         phone: user.phone,
         address: user.address,
+        is_admin: user.is_admin, // Thêm: trả về is_admin
       },
     });
   } catch (err: any) {
