@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: cartradingstore
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
+      POSTGRES_PASSWORD: 123456
       POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5432:5432"
@@ -36,7 +36,7 @@ services:
       DB_PORT: 5432
       DB_NAME: cartradingstore
       DB_USER: postgres
-      DB_PASSWORD: password123
+      DB_PASSWORD: 123456
       PORT: 4000
       JWT_SECRET: your_super_secret_jwt_key_here
     volumes:
