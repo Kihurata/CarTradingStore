@@ -16,40 +16,24 @@ export default function AdminListingCard({
   const [loading, setLoading] = useState(false);
 
   const handleApprove = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(`/api/listings/${data.id}/approve`, { 
-      method: "POST",
-      credentials: "include" // Gửi cookie JWT cho auth admin
-    });
-    if (!res.ok) throw new Error(await res.text() || "Duyệt thất bại");
-    router.refresh(); // Refresh list (di chuyển tab tự động nếu cần)
-    alert("✅ Duyệt bài đăng thành công!");
-  } catch (err) {
-    console.error("Approve error:", err);
-    alert("❌ Lỗi duyệt: " + (err as Error).message);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/listings/${data.id}/approve`, { method: "POST" });
+      if (res.ok) router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const handleReject = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch(`/api/listings/${data.id}/reject`, { 
-      method: "POST",
-      credentials: "include" // Gửi cookie JWT
-    });
-    if (!res.ok) throw new Error(await res.text() || "Từ chối thất bại");
-    router.refresh();
-    alert("✅ Từ chối bài đăng thành công!");
-  } catch (err) {
-    console.error("Reject error:", err);
-    alert("❌ Lỗi từ chối: " + (err as Error).message);
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleReject = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/listings/${data.id}/reject`, { method: "POST" });
+      if (res.ok) router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = () => router.push(`/admin/listings/${data.id}/edit`);
   const handleRefresh = () => router.refresh();
