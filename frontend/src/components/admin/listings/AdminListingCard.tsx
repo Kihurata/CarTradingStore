@@ -4,7 +4,7 @@ import ListingRow from "@/src/components/listings/ListingRow";
 import { Edit3, AlertTriangle, Check, X, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import AdminReportsDrawer from "./AdminReportsDrawer";
 
 export default function AdminListingCard({
   data,
@@ -38,7 +38,6 @@ export default function AdminListingCard({
 
   // example router
   const handleEdit = () => router.push(`/admin/listings/${data.id}`);
-  const handleReport = () => router.push(`/admin/listings/${data.id}/report`);
 
   // Cập nhật trạng thái từ dropdown (APPROVED)
   const changeStatus = async (next: ListingStatus) => {
@@ -59,6 +58,8 @@ export default function AdminListingCard({
     // ====== Dropdown "Cập nhật trạng thái" ======
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [openReports, setOpenReports] = useState(false);
 
   useEffect(() => {
     if (!openDropdown) return;
@@ -125,11 +126,17 @@ export default function AdminListingCard({
 
         {/* Báo cáo vi phạm */}
         <button
-          onClick={handleReport}
+          onClick={() => setOpenReports(true)}
           className="flex items-center gap-1 bg-amber-600 text-white px-3 py-1.5 rounded text-sm hover:bg-amber-700"
         >
           <AlertTriangle className="w-4 h-4" /> Báo cáo vi phạm
         </button>
+
+        <AdminReportsDrawer
+          listingId={data.id}
+          open={openReports}
+          onClose={() => setOpenReports(false)}
+        />
 
         {/* Chỉnh sửa */}
         <button
