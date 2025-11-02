@@ -4,8 +4,7 @@ import ListingRow from "@/src/components/listings/ListingRow";
 import { Edit3, AlertTriangle, Check, X, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import AdminReportsDrawer from "./AdminReportsDrawer";
-
+import AdminReportsDrawer, { ReportCard } from "@/src/components/admin/listings/AdminReportsDrawer";
 export default function AdminListingCard({
   data,
   imgPriority = false,
@@ -59,7 +58,27 @@ export default function AdminListingCard({
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [openReports, setOpenReports] = useState(false);
+const [openReports, setOpenReports] = useState(false);
+
+// ví dụ mock data FE:
+const mockReports: ReportCard[] = [
+  {
+    id: "r1",
+    type: "wrong_info",
+    note: "Giá đăng khác thực tế",
+    status: "new",
+    created_at: new Date().toISOString(),
+    reporter_name: "Nguyễn Văn A",
+    reporter_phone: null,
+  },
+  {
+    id: "r2",
+    type: "spam",
+    note: "Đăng tin spam quảng cáo",
+    status: "reviewing",
+    created_at: new Date(Date.now() - 3600_000).toISOString(),
+  },
+];
 
   useEffect(() => {
     if (!openDropdown) return;
@@ -77,6 +96,7 @@ export default function AdminListingCard({
   if (data.status === ListingStatus.PENDING) {
     RightButtons = (
       <div className="flex flex-col gap-2 items-end">
+        {/* Duyệt */}
         <button
           onClick={handleApprove}
           disabled={loading}
@@ -84,12 +104,20 @@ export default function AdminListingCard({
         >
           <Check className="w-4 h-4" /> Duyệt
         </button>
+        {/* Từ chối */}
         <button
           onClick={handleReject}
           disabled={loading}
           className="flex items-center gap-1 bg-red-600 text-white px-3 py-1.5 rounded text-sm hover:bg-red-700 disabled:opacity-50"
         >
           <X className="w-4 h-4" /> Từ chối
+        </button>
+        {/* Chỉnh sửa */}
+        <button
+          onClick={handleEdit}
+          className="flex items-center gap-1 bg-gray-400 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-500"
+        >
+          <Edit3 className="w-4 h-4" /> Chỉnh sửa
         </button>
       </div>
     );
@@ -136,6 +164,14 @@ export default function AdminListingCard({
           listingId={data.id}
           open={openReports}
           onClose={() => setOpenReports(false)}
+          items={mockReports}
+          loading={false}
+          error=""
+        // frontend-only: cập nhật “ảo”
+          onAction={(reportId, action) => {
+            console.log("clicked", reportId, action);
+            // TODO: gọi API thật sau này
+          }}
         />
 
         {/* Chỉnh sửa */}
