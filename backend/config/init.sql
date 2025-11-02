@@ -31,10 +31,12 @@ BEGIN
     );
   END IF;
 
+DO $$ 
+BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
-    CREATE TYPE report_status AS ENUM ('new','reviewing','accepted','rejected','dismissed');
+    CREATE TYPE report_status AS ENUM ('new','reviewing','valid','invalid','resolved');
   END IF;
-END$$;
+END $$;
 
 -- 2) Helper: tự động cập nhật updated_at trên UPDATE
 CREATE OR REPLACE FUNCTION set_updated_at()
