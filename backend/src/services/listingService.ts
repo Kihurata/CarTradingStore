@@ -340,13 +340,88 @@ export async function deleteListing(id: string) {
   return { success: true };
 }
 
-export async function updateListing(id: string, updates: any, userId: string) {
-  const setClause = Object.keys(updates).map((k, i) => `${k} = $${i+1}`).join(', ');
-  const values = [...Object.values(updates), id];
-  const query = `UPDATE listings SET ${setClause}, updated_at = NOW() WHERE id = $${Object.keys(updates).length + 1} RETURNING *`;
-  const { rows: [updated] } = await pool.query(query, values);
-  await logAudit(userId, 'listing.update', 'listing', id, { changes: updates });
-  return updated;
+export async function updateListing(
+  id: string, 
+  updates: Partial<Listing>, 
+  newImages: Express.Multer.File[] = [], 
+  deleteImageIds: string[] = [], 
+  editorId: string
+): Promise<Listing> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Update fields nếu có
+    if (Object.keys(updates).length > 0) {
+      const setClauses: string[] = [];
+      const values: any[] = [];
+      let paramIdx = 1;
+
+      for (const [key, value] of Object.entries(updates)) {
+        setClauses.push(`${key} = $${paramIdx}`);
+        values.push(value);
+        paramIdx++;
+      }
+
+      values.push(id); // ID cuối cùng
+
+      const sql = `
+        UPDATE listings 
+        SET ${setClauses.join(', ')}, updated_at = NOW() 
+        WHERE id = $${paramIdx}
+        RETURNING *;
+      `;
+      const { rows: [updated] } = await client.query(sql, values);
+      if (!updated) throw new Error('Listing not found');
+    }
+
+    // Xoá images nếu có
+    if (deleteImageIds.length > 0) {
+      await client.query(
+        'DELETE FROM listing_images WHERE id = ANY($1::uuid[]) AND listing_id = $2',
+        [deleteImageIds, id]
+      );
+    }
+
+    // Thêm new images nếu có
+    if (newImages.length > 0) {
+      for (const file of newImages) {
+        const fileExt = file.originalname.split('.').pop();
+        const fileName = `listings/${uuidv4()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from(process.env.SUPABASE_BUCKET!)
+          .getPublicUrl(fileName);
+
+        const imageUrl = publicData.publicUrl;
+
+        await client.query(
+          'INSERT INTO listing_images (listing_id, file_key, public_url, position) VALUES ($1, $2, $3, $4)',
+          [id, fileName, imageUrl, 0] // Position mặc định
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    await logAudit(editorId, 'listing.update', 'listing', id, { changes: updates, newImages: newImages.length, deletedImages: deleteImageIds.length });
+
+    // Trả listing updated đầy đủ
+    return await getListingById(id);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('updateListing error:', err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getAllListingsAdmin() {

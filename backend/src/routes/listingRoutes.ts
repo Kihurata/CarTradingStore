@@ -44,7 +44,7 @@ router.post(
 );
 
 // Sửa
-router.put("/:id", authenticateToken, listingController.editListing);
+router.put("/:id", authenticateToken, requireAdmin, upload.array("images"), listingController.editListing);
 
 // Duyệt bài (admin) - POST match frontend (hard-code approved)
 router.post("/:id/approve", authenticateToken, requireAdmin, async (req: Request, res: Response) => {
