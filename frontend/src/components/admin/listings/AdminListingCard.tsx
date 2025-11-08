@@ -3,14 +3,9 @@ import { Listing, ListingStatus } from "@/src/types/listing";
 import ListingRow from "@/src/components/listings/ListingRow";
 import { ShieldCheck, Edit3, RefreshCw, AlertTriangle, Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-<<<<<<< Updated upstream
-import { useState } from "react";
-
-=======
 import { useEffect, useRef, useState } from "react";
 import AdminReportsDrawer, { ReportCard } from "@/src/components/admin/listings/AdminReportsDrawer";
 import { getReportsForListing, updateReportStatus } from "@/src/services/reportService";
->>>>>>> Stashed changes
 export default function AdminListingCard({
   data,
   imgPriority = false,
@@ -41,10 +36,6 @@ export default function AdminListingCard({
     }
   };
 
-<<<<<<< Updated upstream
-  const handleEdit = () => router.push(`/admin/listings/${data.id}/edit`);
-  const handleRefresh = () => router.refresh();
-=======
   // example router
   const handleEdit = () => router.push(`/admin/listings/${data.id}`);
 
@@ -95,7 +86,6 @@ useEffect(() => {
     .finally(() => setReportsLoading(false));
 }, [openReports, data.id]);
 
->>>>>>> Stashed changes
   let RightButtons;
   if (data.status === ListingStatus.PENDING) {
     RightButtons = (
@@ -119,8 +109,6 @@ useEffect(() => {
   } else if (data.status === ListingStatus.APPROVED) {
     RightButtons = (
       <div className="flex flex-col gap-2 items-end">
-<<<<<<< Updated upstream
-=======
         {/* Cập nhật trạng thái (dropdown) */}
         <div className="relative" ref={dropdownRef}>
           <button
@@ -178,7 +166,6 @@ useEffect(() => {
         />
 
         {/* Chỉnh sửa */}
->>>>>>> Stashed changes
         <button
           onClick={handleEdit}
           className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"

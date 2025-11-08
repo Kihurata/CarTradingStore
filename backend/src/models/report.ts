@@ -9,10 +9,11 @@ export enum ReportType {
 }
 
 export enum ReportStatus {
-  NEW = 'new',
-  REVIEWED = 'reviewed',
-  RESOLVED = 'resolved',
-  DISMISSED = 'dismissed',
+  NEW = "new",
+  REVIEWING = "reviewing",
+  VALID = "valid",
+  INVALID = "invalid",
+  RESOLVED = "resolved",
 }
 
 export interface Report {

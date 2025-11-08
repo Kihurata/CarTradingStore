@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream
-=======
-// app/admin/listings/[id]/page.tsx
 "use client";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -163,7 +160,7 @@ export default function AdminEditListingPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(apiUrl(`listings/${id}`), { credentials: "include", cache: "no-store" });
+        const res = await fetch(`/api/listings/${id}`, { credentials: "include", cache: "no-store" });
         if (!res.ok) throw new Error(`Fetch detail failed: ${res.status}`);
         const json = await res.json();
         const detail: ListingDetail = json.data;
@@ -814,4 +811,4 @@ const handleSubmit = async (e: React.FormEvent) => {
     </div>
   );
 }
->>>>>>> Stashed changes
+
