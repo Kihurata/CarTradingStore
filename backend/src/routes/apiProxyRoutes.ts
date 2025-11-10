@@ -8,7 +8,7 @@ router.all("/*", async (req: Request, res: Response) => {
     const baseURL = process.env.INTERNAL_API_BASE || "http://localhost:4000";
 
     // ⚙️ Giữ nguyên prefix /api khi proxy
-    const targetURL = `${baseURL}/api${req.path}`;
+    const targetURL = `${baseURL}${req.path}`;
 
     console.log("🔍 Proxying request:", req.method, "→", targetURL);
 

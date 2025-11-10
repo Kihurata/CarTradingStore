@@ -22,11 +22,11 @@ export interface Listing {
   color_ext?: string;
   color_int?: string;
   origin?: string;
-video_url?: string;
-address_line?: string;
-province_id?: number;
-district_id?: number;
-images?: { id: string; public_url: string; position: number }[]; 
+  video_url?: string;
+  address_line?: string;
+  province_id?: number;
+  district_id?: number;
+  images?: { id: string; public_url: string; position: number }[]; 
   location_text?: string;
   description?: string;
   status: ListingStatus;

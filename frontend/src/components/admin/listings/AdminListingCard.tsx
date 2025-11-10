@@ -1,7 +1,7 @@
 "use client";
 import { Listing, ListingStatus } from "@/src/types/listing";
 import ListingRow from "@/src/components/listings/ListingRow";
-import { ShieldCheck, Edit3, RefreshCw, AlertTriangle, Check, X } from "lucide-react";
+import { Edit3, AlertTriangle, Check, X, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import AdminReportsDrawer, { ReportCard } from "@/src/components/admin/listings/AdminReportsDrawer";
@@ -64,6 +64,7 @@ const [reports, setReports] = useState<ReportCard[]>([]);
 const [reportsLoading, setReportsLoading] = useState(false);
 const [reportsError, setReportsError] = useState("");
 
+
   useEffect(() => {
     if (!openDropdown) return;
     const onClickAway = (e: MouseEvent) => {
@@ -90,6 +91,7 @@ useEffect(() => {
   if (data.status === ListingStatus.PENDING) {
     RightButtons = (
       <div className="flex flex-col gap-2 items-end">
+        {/* Duyệt */}
         <button
           onClick={handleApprove}
           disabled={loading}
@@ -97,12 +99,20 @@ useEffect(() => {
         >
           <Check className="w-4 h-4" /> Duyệt
         </button>
+        {/* Từ chối */}
         <button
           onClick={handleReject}
           disabled={loading}
           className="flex items-center gap-1 bg-red-600 text-white px-3 py-1.5 rounded text-sm hover:bg-red-700 disabled:opacity-50"
         >
           <X className="w-4 h-4" /> Từ chối
+        </button>
+        {/* Chỉnh sửa */}
+        <button
+          onClick={handleEdit}
+          className="flex items-center gap-1 bg-gray-400 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-500"
+        >
+          <Edit3 className="w-4 h-4" /> Chỉnh sửa
         </button>
       </div>
     );
@@ -145,44 +155,31 @@ useEffect(() => {
           <AlertTriangle className="w-4 h-4" /> Báo cáo vi phạm
         </button>
 
-          <AdminReportsDrawer
-          listingId={data.id}
-          open={openReports}
-          onClose={() => setOpenReports(false)}
-          items={reports}
-          loading={reportsLoading}
-          error={reportsError}
-          onAction={async (reportId, action) => {
-            try {
-              await updateReportStatus(reportId, action);
-              // Refresh reports sau update mà không refresh toàn page
-              const updated = await getReportsForListing(data.id);
-              setReports(updated);
-            } catch (err) {
-              console.error(err);
-              // Optional: Thêm toast error nếu bạn có thư viện toast, nhưng không bắt buộc
-            }
-          }}
-        />
-
+      <AdminReportsDrawer
+  listingId={data.id}
+  open={openReports}
+  onClose={() => setOpenReports(false)}
+  items={reports}
+  loading={reportsLoading}
+  error={reportsError}
+  onAction={async (reportId, action) => {
+    try {
+      await updateReportStatus(reportId, action);
+      // Refresh reports sau update mà không refresh toàn page
+      const updated = await getReportsForListing(data.id);
+      setReports(updated);
+    } catch (err) {
+      console.error(err);
+      // Optional: Thêm toast error nếu bạn có thư viện toast, nhưng không bắt buộc
+    }
+  }}
+/>
         {/* Chỉnh sửa */}
         <button
           onClick={handleEdit}
-          className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+          className="flex items-center gap-1 bg-gray-400 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-500"
         >
           <Edit3 className="w-4 h-4" /> Chỉnh sửa
-        </button>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-1 bg-gray-500 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-600"
-        >
-          <RefreshCw className="w-4 h-4" /> Làm mới
-        </button>
-        <button
-          disabled
-          className="flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded text-sm cursor-default"
-        >
-          <ShieldCheck className="w-4 h-4" /> Đã duyệt
         </button>
       </div>
     );

@@ -1,8 +1,7 @@
 // src/controllers/listingController.ts
 import { Request, Response } from 'express';
 import * as listingService from '../services/listingService';
-import { ListingStatus } from '../models/listing';
-
+import { Listing, ListingStatus } from '../models/listing';
 const toPositiveInt = (v: unknown, def: number, max?: number) => {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 1) return def;

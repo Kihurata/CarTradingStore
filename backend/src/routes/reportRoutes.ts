@@ -1,9 +1,7 @@
 // src/routes/reportRoutes.ts
 import { Router } from 'express';
-import { authenticateTokenOptional } from '../middleware/auth'; 
+import { authenticateTokenOptional,authenticateToken, requireAdmin } from '../middleware/auth'; 
 import * as reportController from '../controllers/reportController';
-import { authenticateToken, requireAdmin } from '../middleware/auth'; // Thêm requireAdmin cho admin only
-
 const router = Router();
 
 // POST /api/reports (optional auth: anonymous OK với phone, logged in dùng reporter_id)

@@ -1,9 +1,8 @@
+// app/admin/listings/[id]/edit/page.tsx
 "use client";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { updateListing } from "@/src/services/listingService";
 import { useParams, useRouter } from "next/navigation";
-import { apiUrl } from "@/src/services/http";
 
 type Option = { id: number; name: string };
 type ExistingImage = { id: string; public_url: string };
@@ -20,7 +19,7 @@ type ListingDetail = {
   fuel: string | null;
   body_type: string | null;
   seats: number | null;
-  origin: string | null;
+  origin?: string;
   description: string | null;
   province_id: number | null;
   district_id: number | null;
@@ -271,74 +270,79 @@ export default function AdminEditListingPage() {
     setDeleteImageIds(next);
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsSubmitted(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitted(true);
 
-  // validate sơ bộ
-  const required = [
-    { ok: !!brandId, name: "Hãng xe" },
-    { ok: !!modelId, name: "Dòng xe" },
-    { ok: !!formData.year, name: "Năm sản xuất" },
-    { ok: !!formData.price_vnd, name: "Giá bán" },
-    { ok: !!formData.mileage_km, name: "Số km đã đi" },
-    { ok: !!formData.title.trim(), name: "Tiêu đề" },
-    { ok: !!formData.description.trim(), name: "Mô tả" },
-    { ok: !!formData.body_type, name: "Kiểu dáng" },
-    { ok: !!provinceId, name: "Tỉnh/Thành" },
-    { ok: !!districtId, name: "Quận/Huyện" },
-    { ok: !!formData.address_line.trim(), name: "Địa chỉ người bán" },
-  ];
-  const miss = required.filter(r => !r.ok);
-  if (miss.length) {
-    alert(`Vui lòng điền đủ:\n${miss.map(m => `- ${m.name}`).join("\n")}`);
-    return;
-  }
-
-  try {
-    setSaving(true);
-    const fd = new FormData();
-    fd.append("title", formData.title);
-    fd.append("price_vnd", String(Number(formData.price_vnd) * 1_000_000));
-    fd.append("brand_id", String(brandId));
-    fd.append("model_id", String(modelId));
-    fd.append("year", formData.year);
-    fd.append("mileage_km", formData.mileage_km);
-    fd.append("body_type", formData.body_type);
-    fd.append("gearbox", formData.gearbox);
-    fd.append("fuel", formData.fuel);
-    fd.append("seats", formData.seats || "");
-    fd.append("origin", formData.origin);
-    fd.append("color_ext", getHexForColor(formData.color_ext, exteriorColors));
-    fd.append("color_int", getHexForColor(formData.color_int, interiorColors));
-    fd.append("description", formData.description);
-    fd.append("province_id", String(provinceId));
-    fd.append("district_id", String(districtId));
-    fd.append("address_line", formData.address_line);
-
-    if (formData.video_url) fd.append("video_url", formData.video_url);
-
-    // ảnh mới
-    newImages.forEach((f) => fd.append("images", f));
-
-    // ảnh cần xoá
-    if (deleteImageIds.size) {
-      for (const delId of Array.from(deleteImageIds)) {
-        fd.append("delete_image_ids[]", delId);
-      }
+    // validate sơ bộ
+    const required = [
+      { ok: !!brandId, name: "Hãng xe" },
+      { ok: !!modelId, name: "Dòng xe" },
+      { ok: !!formData.year, name: "Năm sản xuất" },
+      { ok: !!formData.price_vnd, name: "Giá bán" },
+      { ok: !!formData.mileage_km, name: "Số km đã đi" },
+      { ok: !!formData.title.trim(), name: "Tiêu đề" },
+      { ok: !!formData.description.trim(), name: "Mô tả" },
+      { ok: !!formData.body_type, name: "Kiểu dáng" },
+      { ok: !!provinceId, name: "Tỉnh/Thành" },
+      { ok: !!districtId, name: "Quận/Huyện" },
+      { ok: !!formData.address_line.trim(), name: "Địa chỉ người bán" },
+    ];
+    const miss = required.filter(r => !r.ok);
+    if (miss.length) {
+      alert(`Vui lòng điền đủ:\n${miss.map(m => `- ${m.name}`).join("\n")}`);
+      return;
     }
 
-    await updateListing(id!, fd);
+    try {
+      setSaving(true);
+      const fd = new FormData();
+      fd.append("title", formData.title);
+      fd.append("price_vnd", String(Number(formData.price_vnd) * 1_000_000));
+      fd.append("brand_id", String(brandId));
+      fd.append("model_id", String(modelId));
+      fd.append("year", formData.year);
+      fd.append("mileage_km", formData.mileage_km);
+      fd.append("body_type", formData.body_type);
+      fd.append("gearbox", formData.gearbox);
+      fd.append("fuel", formData.fuel);
+      fd.append("seats", formData.seats || "");
+      fd.append("origin", formData.origin);
+      fd.append("color_ext", getHexForColor(formData.color_ext, exteriorColors));
+      fd.append("color_int", getHexForColor(formData.color_int, interiorColors));
+      fd.append("description", formData.description);
+      fd.append("province_id", String(provinceId));
+      fd.append("district_id", String(districtId));
+      fd.append("address_line", formData.address_line);
 
-    alert("Đã lưu thay đổi.");
-    router.push("/admin/listings");
-  } catch (err: unknown) {
-    console.error(err);
-    alert("Lưu thay đổi thất bại.");
-  } finally {
-    setSaving(false);
-  }
-};
+      if (formData.video_url) fd.append("video_url", formData.video_url);
+
+      // ảnh mới
+      newImages.forEach((f) => fd.append("images", f));
+
+      // ảnh cần xoá
+      if (deleteImageIds.size) {
+        for (const delId of Array.from(deleteImageIds)) {
+          fd.append("delete_image_ids[]", delId);
+        }
+      }
+
+      const res = await fetch(`/api/listings/${id}`, {
+        method: "PUT",
+        body: fd,
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      alert("Đã lưu thay đổi.");
+      router.push("/admin/listings");
+    } catch (err: unknown) {
+      console.error(err);
+      alert("Lưu thay đổi thất bại.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -811,4 +815,3 @@ const handleSubmit = async (e: React.FormEvent) => {
     </div>
   );
 }
-
