@@ -16,10 +16,20 @@ export const getAllListings = async (req: Request, res: Response) => {
     const page = toPositiveInt(req.query.page, 1);
     const limit = toPositiveInt(req.query.limit, 12, 60); // giới hạn tối đa 60
 
+    const q = (req.query.q as string | undefined)?.trim() || undefined;
+
+    const sortRaw = (req.query.sort as string | undefined)?.trim();
+    const allowedSorts = ["newest", "price_asc", "price_desc", "most_viewed"] as const;
+    const sort = allowedSorts.includes(sortRaw as any)
+      ? (sortRaw as (typeof allowedSorts)[number])
+      : undefined;
+
     const filters = {
       min_price: req.query.min_price != null ? Number(req.query.min_price) : undefined,
       max_price: req.query.max_price != null ? Number(req.query.max_price) : undefined,
       body_type: (req.query.body_type as string | undefined)?.trim(),
+      q,
+      sort,
     };
 
     // Validate nhanh min/max

@@ -10,8 +10,20 @@ export async function getAllListings(
   status: string | undefined,
   page: number,
   limit: number,
-  filters?: { min_price?: number; max_price?: number; body_type?: string }
-): Promise<{ items: (Listing & { thumbnail_url?: string; seller_name?: string | null; seller_phone?: string | null })[]; total: number }> {
+  filters?: { 
+    min_price?: number; 
+    max_price?: number; 
+    body_type?: string;
+    q?: string;
+    sort?: "newest" | "price_asc" | "price_desc" | "most_viewed";
+  }
+): Promise<{ 
+  items: (Listing & { 
+    thumbnail_url?: string; 
+    seller_name?: string | null; 
+    seller_phone?: string | null;
+  })[]; 
+    total: number }> {
   const offset = (page - 1) * limit;
 
   const params: (string | number)[] = [];
@@ -38,7 +50,42 @@ export async function getAllListings(
     where.push(`l.body_type ILIKE $${params.length}`);
   }
 
+  // 🔍 Tìm kiếm đơn giản theo tiêu đề + mô tả
+  if (filters?.q && filters.q.trim()) {
+    const keyword = `%${filters.q.trim()}%`;
+
+    // push 2 lần cho 2 cột
+    params.push(keyword, keyword);
+    const baseIndex = params.length - 1; // vị trí keyword đầu tiên
+
+    where.push(
+      `(
+        l.title ILIKE $${baseIndex}
+        OR l.description ILIKE $${baseIndex + 1}
+      )`
+    );
+  }
+
+
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+ // 🔽 Sắp xếp
+  let orderBySql = "ORDER BY l.created_at DESC";
+
+  switch (filters?.sort) {
+    case "price_asc":
+      orderBySql = "ORDER BY l.price_vnd ASC, l.created_at DESC";
+      break;
+    case "price_desc":
+      orderBySql = "ORDER BY l.price_vnd DESC, l.created_at DESC";
+      break;
+    case "most_viewed":
+      orderBySql = "ORDER BY l.view_count DESC, l.created_at DESC";
+      break;
+    case "newest":
+    default:
+      orderBySql = "ORDER BY l.created_at DESC";
+      break;
+  }
 
   // limit/offset luôn ở 2 tham số cuối
   params.push(limit);
@@ -64,7 +111,7 @@ export async function getAllListings(
     JOIN models m ON l.model_id = m.id
     JOIN users  u ON u.id = l.seller_id
     ${whereSql}
-    ORDER BY l.created_at DESC
+    ${orderBySql}
     LIMIT $${params.length - 1} OFFSET $${params.length};
   `;
 
