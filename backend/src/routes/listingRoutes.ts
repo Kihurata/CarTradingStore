@@ -3,7 +3,7 @@ import { Router } from "express";
 import { authenticateToken, requireAdmin } from "../middleware/auth";
 import * as listingController from "../controllers/listingController";
 import multer from "multer";
-import { Request, Response, NextFunction } from 'express'; // Thêm: import cho type
+import { Request, Response, NextFunction } from 'express'; 
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -43,32 +43,31 @@ router.post(
   listingController.createListing
 );
 
-// Sửa
-router.put("/:id", authenticateToken, listingController.editListing);
-
-// Duyệt bài (admin) - POST match frontend (hard-code approved)
+// Duyệt bài (admin)
 router.post("/:id/approve", authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const approver_id = (req.user as any).id;
-    const result = await listingController.updateListingStatus({ ...req, body: { status: 'approved' } } as any, res, undefined as any); // Cast để pass body/status
-    res.json(result); // Trả response từ controller
+  try {
+    req.body.status = 'approved'; 
+    
+    await listingController.updateListingStatus(req, res); 
+  
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Từ chối bài (admin) - POST match frontend (hard-code rejected)
+// Từ chối bài (admin)
 router.post("/:id/reject", authenticateToken, requireAdmin, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const approver_id = (req.user as any).id;
-    const result = await listingController.updateListingStatus({ ...req, body: { status: 'rejected' } } as any, res, undefined as any); // Cast để pass body/status
-    res.json(result);
+  try {
+    req.body.status = 'rejected';
+        await listingController.updateListingStatus(req, res);
+  
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+    res.status(500).json({ error: err.message });
+  }
 });
+
+router.put("/:id", authenticateToken, upload.array("images"), listingController.editListing );
+router.patch("/:id", authenticateToken, requireAdmin, upload.array("images"), listingController.editListing);
 
 // Xoá bài (admin)
 router.delete("/:id", authenticateToken, requireAdmin, listingController.deleteListing);

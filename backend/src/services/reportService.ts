@@ -60,3 +60,47 @@ export async function createReport(data: {
     client.release();
   }
 }
+
+export async function getReportsByListingId(listingId: string): Promise<Report[]> {
+  const { rows } = await pool.query(
+    `
+    SELECT 
+      r.*,
+      u.name AS reporter_name
+    FROM reports r
+    LEFT JOIN users u ON r.reporter_id = u.id
+    WHERE r.listing_id = $1
+    ORDER BY r.created_at DESC
+    `,
+    [listingId]
+  );
+  return rows as Report[];
+}
+
+export async function updateReportStatus(reportId: string, status: ReportStatus, reviewedBy?: string): Promise<Report> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [updated] } = await client.query(
+      `
+      UPDATE reports
+      SET status = $2, reviewed_at = NOW(), reviewed_by = $3
+      WHERE id = $1
+      RETURNING *
+      `,
+      [reportId, status, reviewedBy || null]
+    );
+    if (!updated) throw new Error('Report not found');
+    await client.query('COMMIT');
+    // Log audit nếu có reviewedBy (admin)
+    if (reviewedBy) {
+      await logAudit(reviewedBy, 'report.update', 'report', reportId, { status });
+    }
+    return updated as Report;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

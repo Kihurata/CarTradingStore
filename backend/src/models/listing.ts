@@ -11,12 +11,14 @@ export interface Listing {
   seller_id: string;
   title: string;
   price_vnd: number;
-
   brand: string;
   model: string;
   brand_id: number;
   model_id: number;
-
+  origin?: string; 
+  province_id?: number; 
+  district_id?: number; 
+  address_line?: string;
   year: number;
   mileage_km?: number;
   gearbox?: string;

@@ -31,8 +31,6 @@ BEGIN
     );
   END IF;
 
-DO $$ 
-BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'report_status') THEN
     CREATE TYPE report_status AS ENUM ('new','reviewing','valid','invalid','resolved');
   END IF;

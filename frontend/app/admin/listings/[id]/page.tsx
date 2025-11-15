@@ -19,7 +19,7 @@ type ListingDetail = {
   fuel: string | null;
   body_type: string | null;
   seats: number | null;
-  origin: string | null;
+  origin?: string;
   description: string | null;
   province_id: number | null;
   district_id: number | null;
@@ -328,7 +328,7 @@ export default function AdminEditListingPage() {
       }
 
       const res = await fetch(`/api/listings/${id}`, {
-        method: "PATCH",
+        method: "PUT",
         body: fd,
         credentials: "include",
       });

@@ -5,6 +5,7 @@ import { Edit3, AlertTriangle, Check, X, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import AdminReportsDrawer, { ReportCard } from "@/src/components/admin/listings/AdminReportsDrawer";
+import { getReportsForListing, updateReportStatus } from "@/src/services/reportService";
 export default function AdminListingCard({
   data,
   imgPriority = false,
@@ -59,26 +60,10 @@ export default function AdminListingCard({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
 const [openReports, setOpenReports] = useState(false);
+const [reports, setReports] = useState<ReportCard[]>([]);
+const [reportsLoading, setReportsLoading] = useState(false);
+const [reportsError, setReportsError] = useState("");
 
-// ví dụ mock data FE:
-const mockReports: ReportCard[] = [
-  {
-    id: "r1",
-    type: "wrong_info",
-    note: "Giá đăng khác thực tế",
-    status: "new",
-    created_at: new Date().toISOString(),
-    reporter_name: "Nguyễn Văn A",
-    reporter_phone: null,
-  },
-  {
-    id: "r2",
-    type: "spam",
-    note: "Đăng tin spam quảng cáo",
-    status: "reviewing",
-    created_at: new Date(Date.now() - 3600_000).toISOString(),
-  },
-];
 
   useEffect(() => {
     if (!openDropdown) return;
@@ -91,6 +76,16 @@ const mockReports: ReportCard[] = [
     document.addEventListener("mousedown", onClickAway);
     return () => document.removeEventListener("mousedown", onClickAway);
   }, [openDropdown]);
+
+useEffect(() => {
+  if (!openReports) return;
+  setReportsLoading(true);
+  setReportsError("");
+  getReportsForListing(data.id)
+    .then(setReports)
+    .catch((err) => setReportsError(err.message))
+    .finally(() => setReportsLoading(false));
+}, [openReports, data.id]);
 
   let RightButtons;
   if (data.status === ListingStatus.PENDING) {
@@ -160,20 +155,25 @@ const mockReports: ReportCard[] = [
           <AlertTriangle className="w-4 h-4" /> Báo cáo vi phạm
         </button>
 
-        <AdminReportsDrawer
-          listingId={data.id}
-          open={openReports}
-          onClose={() => setOpenReports(false)}
-          items={mockReports}
-          loading={false}
-          error=""
-        // frontend-only: cập nhật “ảo”
-          onAction={(reportId, action) => {
-            console.log("clicked", reportId, action);
-            // TODO: gọi API thật sau này
-          }}
-        />
-
+      <AdminReportsDrawer
+  listingId={data.id}
+  open={openReports}
+  onClose={() => setOpenReports(false)}
+  items={reports}
+  loading={reportsLoading}
+  error={reportsError}
+  onAction={async (reportId, action) => {
+    try {
+      await updateReportStatus(reportId, action);
+      // Refresh reports sau update mà không refresh toàn page
+      const updated = await getReportsForListing(data.id);
+      setReports(updated);
+    } catch (err) {
+      console.error(err);
+      // Optional: Thêm toast error nếu bạn có thư viện toast, nhưng không bắt buộc
+    }
+  }}
+/>
         {/* Chỉnh sửa */}
         <button
           onClick={handleEdit}

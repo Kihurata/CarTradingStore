@@ -1,8 +1,7 @@
 // src/controllers/listingController.ts
 import { Request, Response } from 'express';
 import * as listingService from '../services/listingService';
-import { ListingStatus } from '../models/listing';
-
+import { Listing, ListingStatus } from '../models/listing';
 const toPositiveInt = (v: unknown, def: number, max?: number) => {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 1) return def;
@@ -212,12 +211,43 @@ export const deleteListing = async (req: Request, res: Response) => {
 export const editListing = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
-    const updates = req.body;
-    const listing = await listingService.updateListing(id, updates, userId);
-    res.json({ data: listing });
+    const editorId = req.user?.id;
+    if (!editorId) return res.status(401).json({ error: "Unauthorized" });
+
+    // Parse updates từ body (partial)
+    const updates: Partial<Listing> = {};
+    if (req.body.title) updates.title = req.body.title;
+    if (req.body.price_vnd) updates.price_vnd = Number(req.body.price_vnd);
+    if (req.body.brand_id) updates.brand_id = Number(req.body.brand_id);
+    if (req.body.model_id) updates.model_id = Number(req.body.model_id);
+    if (req.body.year) updates.year = Number(req.body.year);
+    if (req.body.mileage_km) updates.mileage_km = Number(req.body.mileage_km);
+    if (req.body.gearbox) updates.gearbox = req.body.gearbox;
+    if (req.body.fuel) updates.fuel = req.body.fuel;
+    if (req.body.body_type) updates.body_type = req.body.body_type;
+    if (req.body.seats) updates.seats = Number(req.body.seats);
+    if (req.body.origin) updates.origin = req.body.origin;
+    if (req.body.description) updates.description = req.body.description;
+    if (req.body.province_id) updates.province_id = Number(req.body.province_id);
+    if (req.body.district_id) updates.district_id = Number(req.body.district_id);
+    if (req.body.address_line) updates.address_line = req.body.address_line;
+    if (req.body.color_ext) updates.color_ext = req.body.color_ext;
+    if (req.body.color_int) updates.color_int = req.body.color_int;
+    if (req.body.video_url) updates.video_url = req.body.video_url;
+
+    // Handle delete images (array từ form)
+    const deleteImageIds = Array.isArray(req.body["delete_image_ids[]"]) 
+      ? req.body["delete_image_ids[]"] 
+      : (req.body["delete_image_ids[]"] ? [req.body["delete_image_ids[]"]] : []);
+
+    // New images từ files
+    const newImages = req.files as Express.Multer.File[] || [];
+
+    const updated = await listingService.updateListing(id, updates, newImages, deleteImageIds, editorId);
+    res.json({ data: updated });
   } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
+    console.error('❌ editListing error:', err);
+    res.status(500).json({ error: (err as Error).message });
   }
 };
 
