@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapPin, Phone, UserRound } from "lucide-react";
 import { Listing } from "@/src/types/listing";
 import { ReactNode } from "react";
+import { formatPriceVND } from "@/lib/formatCurrency";
 
 type Props = {
   data: Listing;
@@ -12,7 +13,35 @@ type Props = {
   titleAsLink?: boolean;
   variant?: "public" | "admin";
   imgPriority?: boolean; 
+  showStatus?: boolean;          // Mặc định false, chỉ dành cho admin
 };
+
+const STATUS_STYLES: Record<
+  string,
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Nháp",
+    className: "bg-gray-100 text-gray-600 border-gray-200",
+  },
+  pending: {
+    label: "Chờ duyệt",
+    className: "bg-amber-100 text-amber-700 border-amber-200",
+  },
+  approved: {
+    label: "Đang bán",
+    className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  },
+  rejected: {
+    label: "Bị từ chối",
+    className: "bg-red-100 text-red-700 border-red-200",
+  },
+  sold: {
+    label: "Đã bán",
+    className: "bg-blue-100 text-blue-700 border-blue-200",
+  }
+};
+
 
 export default function ListingRow({
   data,
@@ -20,6 +49,7 @@ export default function ListingRow({
   titleAsLink = true,
   variant = "public",
   imgPriority = false,
+  showStatus = false,
 }: Props) {
   const SellerInfo = (
     <div className="mt-3 text-[13px] text-gray-700">
@@ -44,15 +74,33 @@ export default function ListingRow({
     </div>
   );
 
+  const statusInfo =
+  showStatus && data.status
+    ? STATUS_STYLES[data.status] || {
+        label: data.status,
+        className: "bg-gray-100 text-gray-600 border-gray-200",
+      }
+    : null;
+      
   const Price = (
     <div className="text-right">
+      {statusInfo && (
+        <div
+          className={
+            "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium mb-1 " +
+            statusInfo.className
+          }
+        >
+          {statusInfo.label}
+        </div>
+      )}
       <div className="text-[20px] font-bold text-red-600 leading-none">
-        {(data.price_vnd / 1_000_000).toLocaleString()} triệu
+        {formatPriceVND(data.price_vnd)}
       </div>
     </div>
   );
 
-  // ============== PUBLIC (giữ như cũ) ==============
+  // ============== PUBLIC ==============
   if (variant === "public") {
     return (
       <div className="flex items-start gap-4">

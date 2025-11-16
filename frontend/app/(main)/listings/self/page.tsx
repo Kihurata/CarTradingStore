@@ -60,7 +60,7 @@ export default async function SelfListingsPage({
       ) : (
         <div className="space-y-4">
           {data.map((car) => (
-            <ListingCard key={car.id} data={car} />
+            <ListingCard key={car.id} data={car} showStatus mode="self"/>
           ))}
         </div>
       )}
