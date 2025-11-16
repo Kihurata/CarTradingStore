@@ -30,8 +30,6 @@ export default async function SelfListingsPage({
     cache: "no-store",
     headers: {
       Cookie: cookieHeader,
-      // Nếu backend đọc Bearer thay vì cookie, dùng:
-      // Authorization: `Bearer ${cookies().get("token")?.value ?? ""}`,
     },
   });
 
@@ -55,7 +53,7 @@ export default async function SelfListingsPage({
 
   return (
     <main className="max-w-7xl mx-auto py-10 px-6">
-      <h1 className="text-xl font-semibold mb-6">Tin đăng của bạn</h1>
+      <h1 className="text-xl text-black font-semibold mb-6">TIN ĐĂNG CỦA BẠN</h1>
 
       {data.length === 0 ? (
         <p className="text-gray-600">Bạn chưa đăng tin nào.</p>

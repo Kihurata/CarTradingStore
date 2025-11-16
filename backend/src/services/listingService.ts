@@ -50,23 +50,24 @@ export async function getAllListings(
     where.push(`l.body_type ILIKE $${params.length}`);
   }
 
-  // 🔍 Tìm kiếm đơn giản theo tiêu đề + mô tả
+  // Tìm kiếm 
   if (filters?.q && filters.q.trim()) {
     const keyword = `%${filters.q.trim()}%`;
 
     // push 2 lần cho 2 cột
-    params.push(keyword, keyword);
-    const baseIndex = params.length - 1; // vị trí keyword đầu tiên
+    params.push(keyword);
+    const idx = params.length; // vị trí keyword đầu tiên
 
     where.push(
       `(
-        l.title ILIKE $${baseIndex}
-        OR l.description ILIKE $${baseIndex + 1}
+        l.title ILIKE $${idx}
+        OR l.description ILIKE $${idx}
+        OR b.name ILIKE $${idx}
+        OR m.name ILIKE $${idx}
       )`
     );
   }
-
-
+  
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
  // 🔽 Sắp xếp
   let orderBySql = "ORDER BY l.created_at DESC";
