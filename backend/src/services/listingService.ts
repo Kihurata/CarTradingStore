@@ -336,7 +336,8 @@ export async function createListing(data: {
       const uploadedUrls: string[] = [];
       for (const file of data.images) {
         const fileExt = file.originalname.split(".").pop();
-        const fileName = `pending/${uuidv4()}.${fileExt}`;
+        const imageId = uuidv4();
+        const fileName = `listings/${listingId}/${imageId}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from(process.env.SUPABASE_BUCKET!)
           .upload(fileName, file.buffer, {
@@ -434,8 +435,9 @@ export async function updateListing(
     // Thêm new images nếu có
     if (newImages.length > 0) {
       for (const file of newImages) {
-        const fileExt = file.originalname.split('.').pop();
-        const fileName = `listings/${uuidv4()}.${fileExt}`;
+        const fileExt = file.originalname.split(".").pop();
+        const imageId = uuidv4();
+        const fileName = `listings/${id}/${imageId}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from(process.env.SUPABASE_BUCKET!)
           .upload(fileName, file.buffer, {

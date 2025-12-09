@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS listing_images (
   listing_id  UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
   file_key    TEXT NOT NULL,   -- đường dẫn trong bucket Supabase
   public_url  TEXT NOT NULL,
-  is_approved BOOLEAN NOT NULL DEFAULT TRUE,
+  is_approved BOOLEAN NOT NULL DEFAULT FALSE,
   position    INT NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
