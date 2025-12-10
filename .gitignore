@@ -39,3 +39,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+npm-debug.log
+.next
