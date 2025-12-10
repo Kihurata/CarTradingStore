@@ -8,6 +8,12 @@ export const logAudit = async (
   targetId?: string,
   metadata?: any
 ): Promise<any> => {
-  const newAudit = await createAuditLog(actorId, action, targetType, targetId, metadata);
+  const newAudit = await createAuditLog({ 
+    actor_id: actorId,    
+    action, 
+    target_type: targetType, 
+    target_id: targetId,    
+    metadata 
+});
   return newAudit;
 };

@@ -1,0 +1,88 @@
+name: Dev Deploy Pipeline (No Secrets)
+
+# Cấu hình: Chỉ chạy khi có code mới ở nhánh 'dev-deploy'
+on:
+  push:
+    branches: [ "dev-deploy" ]
+  pull_request:
+    branches: [ "dev-deploy" ]
+
+jobs:
+  # --- JOB 1: TEST & BUILD BACKEND ---
+  backend-ci:
+    runs-on: ubuntu-latest
+    
+    # Tạo một database PostgreSQL ảo tạm thời để chạy test (nếu cần integration test)
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: user_test
+          POSTGRES_PASSWORD: password_fake_123
+          POSTGRES_DB: cartradingstore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: './backend/package-lock.json'
+
+      - name: Install Dependencies
+        run: |
+          cd backend
+          npm ci
+
+      # Tạo file .env giả để app khởi động được mà không chết
+      # Các giá trị này khớp với service 'postgres' bên trên
+      - name: Create Dummy .env
+        run: |
+          cd backend
+          echo "PORT=4000" >> .env
+          echo "NODE_ENV=test" >> .env
+          echo "DB_HOST=localhost" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "DB_USER=user_test" >> .env
+          echo "DB_PASSWORD=password_fake_123" >> .env
+          echo "DB_NAME=cartradingstore_test" >> .env
+          # Các key giả khác (bắt buộc phải có giá trị để không lỗi code)
+          echo "JWT_SECRET=super_fake_secret_key_for_ci_cd" >> .env
+          echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
+          echo "SUPABASE_KEY=fake-key" >> .env
+
+      - name: Run Unit Tests
+        run: |
+          cd backend
+          # Chạy test và check coverage > 80% (như bạn đã làm được)
+          npm run test:unit -- --coverage
+
+      # Build thử Docker Backend để đảm bảo file Dockerfile không lỗi
+      - name: Verify Docker Build (Backend)
+        run: |
+          cd backend
+          docker build . -t backend-test-build
+
+  # --- JOB 2: BUILD FRONTEND (Chạy song song) ---
+  frontend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Build thử Docker Frontend
+      - name: Verify Docker Build (Frontend)
+        run: |
+          cd frontend
+          # Frontend build thường cần biến môi trường public, ta set giả ở đây
+          docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
