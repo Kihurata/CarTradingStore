@@ -1,24 +1,20 @@
-name:  Deploy Pipeline
+name: CI/CD Pipeline
 
-# Cấu hình: Chỉ chạy khi có code mới ở nhánh 'dev-deploy'
-on:
-  push:
-    branches: [ "deploy" ]
-  pull_request:
-    branches: [ "deploy" ]
+# Chạy trên mọi nhánh khi có code push lên
+on: [push]
 
 jobs:
   # --- JOB 1: TEST & BUILD BACKEND ---
   backend-ci:
     runs-on: ubuntu-latest
     
-    # Tạo một database PostgreSQL ảo tạm thời để chạy test (nếu cần integration test)
+    # Tạo Database ảo để Backend khởi động được mà không lỗi kết nối
     services:
       postgres:
         image: postgres:15-alpine
         env:
           POSTGRES_USER: user_test
-          POSTGRES_PASSWORD: password_fake_123
+          POSTGRES_PASSWORD: password_fake
           POSTGRES_DB: cartradingstore_test
         ports:
           - 5432:5432
@@ -39,13 +35,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
 
-      - name: Install Dependencies
+      - name: Install Backend Dependencies
         run: |
           cd backend
           npm ci
 
-      # Tạo file .env giả để app khởi động được mà không chết
-      # Các giá trị này khớp với service 'postgres' bên trên
+      # Tạo file .env giả để chạy test
       - name: Create Dummy .env
         run: |
           cd backend
@@ -54,35 +49,33 @@ jobs:
           echo "DB_HOST=localhost" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=user_test" >> .env
-          echo "DB_PASSWORD=password_fake_123" >> .env
+          echo "DB_PASSWORD=password_fake" >> .env
           echo "DB_NAME=cartradingstore_test" >> .env
-          # Các key giả khác (bắt buộc phải có giá trị để không lỗi code)
-          echo "JWT_SECRET=super_fake_secret_key_for_ci_cd" >> .env
-          echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
+          echo "JWT_SECRET=fake_secret_key" >> .env
+          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
 
       - name: Run Unit Tests
         run: |
           cd backend
-          # Chạy test và check coverage > 80% (như bạn đã làm được)
+          # Chạy test với coverage > 80%
           npm run test:unit -- --coverage
 
-      # Build thử Docker Backend để đảm bảo file Dockerfile không lỗi
-      - name: Verify Docker Build (Backend)
+      # Build thử Docker Backend để kiểm tra lỗi cú pháp
+      - name: Verify Backend Docker Build
         run: |
           cd backend
-          docker build . -t backend-test-build
+          docker build . -t backend-build-check
 
-  # --- JOB 2: BUILD FRONTEND (Chạy song song) ---
+  # --- JOB 2: BUILD FRONTEND ---
   frontend-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Build thử Docker Frontend
-      - name: Verify Docker Build (Frontend)
+      # Build thử Docker Frontend (Truyền biến môi trường public giả)
+      - name: Verify Frontend Docker Build
         run: |
           cd frontend
-          # Frontend build thường cần biến môi trường public, ta set giả ở đây
-          docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
+          docker build . -t frontend-build-check --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
