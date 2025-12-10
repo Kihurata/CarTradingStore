@@ -1,15 +1,17 @@
-name: Full CI Pipeline (Unit & Integration)
+name: CI/CD Pipeline (Test & Auto-Deploy)
 
 on:
   push:
     branches: [ "deploy" ]
-  pull_request:
-    branches: [ "deploy" ]
 
 jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: BACKEND (Test Unit, Integration & Build Check)
+  # ------------------------------------------------------------------
   backend-ci:
     runs-on: ubuntu-latest
     
+    # Tạo Database ảo để chạy Integration Test
     services:
       postgres:
         image: postgres:15-alpine
@@ -41,6 +43,7 @@ jobs:
           cd backend
           npm ci
 
+      # Tạo .env giả để chạy test
       - name: Create Dummy .env
         run: |
           cd backend
@@ -55,47 +58,58 @@ jobs:
           echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
 
-      - name: Prepare Database & Run All Tests
+      # Chuẩn bị DB và chạy Test
+      - name: Prepare Database & Run Tests
         run: |
-          # 1. Cài đặt công cụ để chạy lệnh SQL
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          # Cài client để chạy lệnh SQL
+          sudo apt-get update && sudo apt-get install -y postgresql-client
 
-          # 2. Đợi DB sẵn sàng và Nạp dữ liệu (Init & Seed)
+          # Đợi DB sẵn sàng
           export PGPASSWORD=password_fake
-          
-          echo " Waiting for Database..."
           sleep 5
           
-          echo " Executing init.sql (Create Tables)..."
+          # Nạp dữ liệu bảng và mẫu
           psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/init.sql
-          
-          echo " Executing seed.sql (Insert Data)..."
           psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/seed.sql
 
-          # 3. Chạy các bài Test
           cd backend
-          
-          echo " Running Unit Tests..."
+          # Chạy Unit Test
           npm run test:unit -- --coverage
-          
-          echo " Running Integration Tests..."
-          # --runInBand: Chạy tuần tự để tránh xung đột dữ liệu
-          # --forceExit: Đóng kết nối DB sau khi test xong
+          # Chạy Integration Test
           npm run test:int -- --runInBand --forceExit
 
-      - name: Verify Docker Build (Backend)
+      # Build thử Docker Backend (Kiểm tra cú pháp)
+      - name: Verify Backend Docker Build
         run: |
           cd backend
           docker build . -t backend-test-build
 
+  # ------------------------------------------------------------------
+  # JOB 2: FRONTEND (Build Check)
+  # ------------------------------------------------------------------
   frontend-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Verify Docker Build (Frontend)
+      # Build thử Docker Frontend (Kiểm tra cú pháp)
+      - name: Verify Frontend Docker Build
         run: |
           cd frontend
+          # Link API này chỉ để test build, không ảnh hưởng code thật
           docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
+
+  # ------------------------------------------------------------------
+  # JOB 3: DEPLOY TO RENDER (Chỉ chạy khi 2 job trên OK)
+  # ------------------------------------------------------------------
+  deploy-production:
+    needs: [backend-ci, frontend-ci] 
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/deploy' 
+    steps:
+      - name: Trigger Render Deploy (Backend)
+        run: curl -X POST ${{ secrets.RENDER_BACKEND_HOOK }}
+      
+      - name: Trigger Render Deploy (Frontend)
+        run: curl -X POST ${{ secrets.RENDER_FRONTEND_HOOK }}
