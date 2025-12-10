@@ -2,9 +2,9 @@ name: Full CI Pipeline (Unit & Integration)
 
 on:
   push:
-    branches: [ "dev-deploy" ]
+    branches: [ "deploy" ]
   pull_request:
-    branches: [ "dev-deploy" ]
+    branches: [ "deploy" ]
 
 jobs:
   backend-ci:
