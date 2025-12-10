@@ -55,9 +55,7 @@ const nextConfig: NextConfig = {
   
   // ✅ Proxy /api/* → backend
   async rewrites() {
-    const base = process.env.INTERNAL_API_BASE || "http://localhost:4000";
-    console.log("🔥 [DEBUG] Proxying /api requests to:", base);
-    console.log("ℹ️ [DEBUG] INTERNAL_API_BASE env is:", process.env.INTERNAL_API_BASE);
+    const base = process.env.INTERNAL_API_BASE || "https://cartrading-backend-ze7c.onrender.com";
     return [
       {
         source: "/api/:path*",
