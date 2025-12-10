@@ -1,11 +1,11 @@
-name: Dev Deploy Pipeline (No Secrets)
+name:  Deploy Pipeline
 
 # Cấu hình: Chỉ chạy khi có code mới ở nhánh 'dev-deploy'
 on:
   push:
-    branches: [ "dev-deploy" ]
+    branches: [ "deploy" ]
   pull_request:
-    branches: [ "dev-deploy" ]
+    branches: [ "deploy" ]
 
 jobs:
   # --- JOB 1: TEST & BUILD BACKEND ---
