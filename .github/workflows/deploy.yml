@@ -1,14 +1,15 @@
-name: CI/CD Pipeline
+name: Full CI Pipeline (Unit & Integration)
 
-# Chạy trên mọi nhánh khi có code push lên
-on: [push]
+on:
+  push:
+    branches: [ "dev-deploy" ]
+  pull_request:
+    branches: [ "dev-deploy" ]
 
 jobs:
-  # --- JOB 1: TEST & BUILD BACKEND ---
   backend-ci:
     runs-on: ubuntu-latest
     
-    # Tạo Database ảo để Backend khởi động được mà không lỗi kết nối
     services:
       postgres:
         image: postgres:15-alpine
@@ -35,12 +36,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './backend/package-lock.json'
 
-      - name: Install Backend Dependencies
+      - name: Install Dependencies
         run: |
           cd backend
           npm ci
 
-      # Tạo file .env giả để chạy test
       - name: Create Dummy .env
         run: |
           cd backend
@@ -51,31 +51,51 @@ jobs:
           echo "DB_USER=user_test" >> .env
           echo "DB_PASSWORD=password_fake" >> .env
           echo "DB_NAME=cartradingstore_test" >> .env
-          echo "JWT_SECRET=fake_secret_key" >> .env
-          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
+          echo "JWT_SECRET=super_fake_secret_key" >> .env
+          echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
 
-      - name: Run Unit Tests
+      - name: Prepare Database & Run All Tests
         run: |
+          # 1. Cài đặt công cụ để chạy lệnh SQL
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+          # 2. Đợi DB sẵn sàng và Nạp dữ liệu (Init & Seed)
+          export PGPASSWORD=password_fake
+          
+          echo " Waiting for Database..."
+          sleep 5
+          
+          echo " Executing init.sql (Create Tables)..."
+          psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/init.sql
+          
+          echo " Executing seed.sql (Insert Data)..."
+          psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/seed.sql
+
+          # 3. Chạy các bài Test
           cd backend
-          # Chạy test với coverage > 80%
+          
+          echo " Running Unit Tests..."
           npm run test:unit -- --coverage
+          
+          echo " Running Integration Tests..."
+          # --runInBand: Chạy tuần tự để tránh xung đột dữ liệu
+          # --forceExit: Đóng kết nối DB sau khi test xong
+          npm run test:int -- --runInBand --forceExit
 
-      # Build thử Docker Backend để kiểm tra lỗi cú pháp
-      - name: Verify Backend Docker Build
+      - name: Verify Docker Build (Backend)
         run: |
           cd backend
-          docker build . -t backend-build-check
+          docker build . -t backend-test-build
 
-  # --- JOB 2: BUILD FRONTEND ---
   frontend-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Build thử Docker Frontend (Truyền biến môi trường public giả)
-      - name: Verify Frontend Docker Build
+      - name: Verify Docker Build (Frontend)
         run: |
           cd frontend
-          docker build . -t frontend-build-check --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
+          docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
