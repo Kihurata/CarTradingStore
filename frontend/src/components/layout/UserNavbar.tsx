@@ -27,7 +27,7 @@ export function UserNavbar() {
   return (
     <BaseNavbar
       links={[
-        { href: "/listings", label: "Ô TÔ CŨ" },
+        { href: "/listings", label: "Ô TÔ CŨ (test auto deploy)" },
         { href: "/news", label: "TIN TỨC" },
       ]}
       rightButtons={
