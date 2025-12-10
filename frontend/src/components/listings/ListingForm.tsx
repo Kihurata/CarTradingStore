@@ -238,7 +238,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
               ...prev,
               seller_name: user.name || user.email || "",
               seller_phone: user.phone || "",
-              address_line: user.address || "", // AUTO-FILL ĐỊA CHỈ TỪ USER
+              address_line: user.address || "",
             }));
           } catch (err) {
             console.error("Error parsing stored user:", err);
@@ -368,7 +368,9 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
       });
 
       console.log("🔄 Đang gửi dữ liệu...");
-
+      formDataToSend.forEach((value, key) => {
+        console.log(`${key}: ${value}`);
+      });
       // endpoint & method tuỳ mode
     const endpoint = isEdit
     ? (mode === "edit-admin"
@@ -386,7 +388,9 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.log("Lỗi backend:", errorText);
         throw new Error(`HTTP ${response.status}: ${errorText}`);
+        
       }
 
       const result = await response.json();

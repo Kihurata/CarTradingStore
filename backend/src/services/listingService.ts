@@ -220,7 +220,7 @@ export async function getListingById(id: string) {
     LEFT JOIN LATERAL (
       SELECT li.public_url
       FROM listing_images li
-      WHERE li.listing_id = l.id AND li.is_approved = TRUE
+      WHERE li.listing_id = l.id
       ORDER BY li.position ASC, li.created_at ASC
       LIMIT 1
     ) AS thumb ON TRUE
@@ -236,7 +236,7 @@ export async function getListingById(id: string) {
                ORDER BY li.position ASC, li.created_at ASC
              ) AS images
       FROM listing_images li
-      WHERE li.listing_id = l.id AND li.is_approved = TRUE
+      WHERE li.listing_id = l.id
     ) AS imgs ON TRUE
 
     WHERE l.id::text = $1
@@ -345,7 +345,10 @@ export async function createListing(data: {
             upsert: false,
           });
 
-        if (uploadError) throw uploadError;
+        if (uploadError){
+          console.error("Lỗi upload Supabase:", uploadError);
+          throw uploadError;  
+        } 
 
         const { data: publicData } = supabase.storage
           .from(process.env.SUPABASE_BUCKET!)
