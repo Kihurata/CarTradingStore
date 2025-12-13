@@ -21,6 +21,17 @@ describe('AdminService', () => {
   });
 
   describe('getAdminListings', () => {
+    /*
+    [Description]: Kiểm tra xem service có trả về danh sách bài đăng kèm theo thông tin người bán và số lượng báo cáo hay không.
+    [Pre-condition]: Database hoạt động và trả về dữ liệu mock.
+    [Data Test]: status='pending', page=1, limit=10
+    [Steps]: 
+      1. Mock pool.query trả về mảng chứa thông tin listing và seller_name.
+      2. Gọi hàm adminService.getAdminListings('pending', 1, 10).
+    [Expected Result]: 
+      - pool.query được gọi với câu lệnh SELECT chính xác.
+      - Hàm trả về đúng mảng mockRows.
+    */
     it('should return listings with seller info', async () => {
       const mockRows = [{ id: '1', title: 'Car', seller_name: 'John', reports_count: '2' }];
       (pool.query as jest.Mock).mockResolvedValue({ rows: mockRows });
@@ -33,14 +44,27 @@ describe('AdminService', () => {
   });
 
   describe('updateListingStatus', () => {
+    /*
+    [Description]: Kiểm tra quy trình cập nhật trạng thái bài đăng thành công, sử dụng transaction và ghi log audit.
+    [Pre-condition]: Kết nối DB thành công, Listing tồn tại.
+    [Data Test]: listingId='123', status='approved', adminId='admin-1'
+    [Steps]: 
+      1. Mock pool.connect trả về client.
+      2. Mock client.query lần lượt: BEGIN, UPDATE (thành công), COMMIT.
+      3. Gọi hàm adminService.updateListingStatus.
+    [Expected Result]: 
+      - Transaction được thực hiện (BEGIN -> COMMIT).
+      - Audit log được ghi lại.
+      - Trả về object chứa trạng thái mới.
+    */
     it('should update status using transaction and log audit', async () => {
       const listingId = '123';
       const adminId = 'admin-1';
       
       mockClient.query
-        .mockResolvedValueOnce({}) 
-        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: listingId, status: 'approved' }] }) 
-        .mockResolvedValueOnce({}); 
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: listingId, status: 'approved' }] }) // UPDATE
+        .mockResolvedValueOnce({}); // COMMIT
 
       const result = await adminService.updateListingStatus(listingId, 'approved' as any, adminId);
 
@@ -52,6 +76,18 @@ describe('AdminService', () => {
       expect(mockClient.release).toHaveBeenCalled();
     });
 
+    /*
+    [Description]: Kiểm tra xem transaction có được ROLLBACK (hoàn tác) nếu có lỗi xảy ra trong quá trình cập nhật hay không.
+    [Pre-condition]: Database gặp lỗi khi query.
+    [Data Test]: listingId='1', status='approved', adminId='admin'
+    [Steps]: 
+      1. Mock client.query ném ra lỗi 'DB Error'.
+      2. Gọi hàm adminService.updateListingStatus.
+    [Expected Result]: 
+      - Ném ra lỗi 'DB Error'.
+      - Transaction được ROLLBACK.
+      - Kết nối client được release.
+    */
     it('should rollback if error occurs', async () => {
       mockClient.query.mockRejectedValueOnce(new Error('DB Error')); 
 
@@ -62,6 +98,17 @@ describe('AdminService', () => {
   });
 
   describe('updateUserStatus', () => {
+    /*
+    [Description]: Kiểm tra xem service có cập nhật trạng thái người dùng (ví dụ: cấm) thành công và ghi log audit hay không.
+    [Pre-condition]: User tồn tại.
+    [Data Test]: userId='u1', status='banned', adminId='admin'
+    [Steps]: 
+      1. Mock pool.query thực hiện UPDATE trả về row đã update.
+      2. Gọi hàm adminService.updateUserStatus.
+    [Expected Result]: 
+      - Hàm trả về user với status 'banned'.
+      - Audit log được gọi.
+    */
     it('should update user status', async () => {
       (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: 'u1', status: 'banned' }] });
       
@@ -73,6 +120,17 @@ describe('AdminService', () => {
   });
 
   describe('updateListing (Admin Edit)', () => {
+    /*
+    [Description]: Kiểm tra xem service có tạo truy vấn cập nhật động (dynamic update query) và ghi log audit cho hành động chỉnh sửa của admin hay không.
+    [Pre-condition]: Listing tồn tại.
+    [Data Test]: listingId='1', updates={ title: 'New Title', price_vnd: 100 }
+    [Steps]: 
+      1. Mock pool.query UPDATE trả về row đã update.
+      2. Gọi hàm adminService.updateListing.
+    [Expected Result]: 
+      - SQL Query chứa đúng các trường cần update (title, price_vnd).
+      - Audit log được ghi với action 'listing.update'.
+    */
     it('should build dynamic update query and log audit', async () => {
       // Mock trả về listing sau khi update
       (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: '1', title: 'New Title' }] });
@@ -93,6 +151,15 @@ describe('AdminService', () => {
       expect(result).toEqual({ id: '1', title: 'New Title' });
     });
 
+    /*
+    [Description]: Kiểm tra xem service có báo lỗi nếu không tìm thấy bài đăng cần chỉnh sửa hay không.
+    [Pre-condition]: Listing ID không tồn tại.
+    [Data Test]: listingId='999'
+    [Steps]: 
+      1. Mock pool.query trả về rows rỗng [].
+      2. Gọi hàm adminService.updateListing.
+    [Expected Result]: Ném ra lỗi 'Listing not found'.
+    */
     it('should throw error if listing not found', async () => {
       (pool.query as jest.Mock).mockResolvedValue({ rows: [] }); // Trả về rỗng
 
@@ -102,6 +169,17 @@ describe('AdminService', () => {
   });
 
   describe('getListingReports', () => {
+    /*
+    [Description]: Kiểm tra xem service có lấy được danh sách báo cáo (reports) cho một bài đăng cụ thể hay không.
+    [Pre-condition]: Có report trong DB.
+    [Data Test]: listingId='list-1'
+    [Steps]: 
+      1. Mock pool.query trả về mảng reports.
+      2. Gọi hàm adminService.getListingReports.
+    [Expected Result]: 
+      - Query SELECT chính xác kèm thông tin người báo cáo (u.name).
+      - Trả về mảng reports.
+    */
     it('should fetch reports for a listing', async () => {
       (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: 'r1', type: 'SPAM' }] });
       
@@ -116,6 +194,15 @@ describe('AdminService', () => {
   });
 
   describe('getAdminUsers', () => {
+    /*
+    [Description]: Kiểm tra xem service có lấy được danh sách người dùng kèm theo bộ lọc trạng thái và phân trang hay không.
+    [Pre-condition]: Database hoạt động.
+    [Data Test]: status='active', page=1, limit=10
+    [Steps]: 
+      1. Mock pool.query trả về danh sách user.
+      2. Gọi hàm adminService.getAdminUsers.
+    [Expected Result]: SQL Query chứa điều kiện lọc status và phân trang (LIMIT, OFFSET).
+    */
     it('should fetch users with status filter', async () => {
       (pool.query as jest.Mock).mockResolvedValue({ rows: [{ id: 'u1' }] });
       
@@ -128,8 +215,16 @@ describe('AdminService', () => {
     });
   });
 
-  // Bổ sung thêm test case lỗi cho updateUserStatus 
   describe('updateUserStatus Error', () => {
+    /*
+    [Description]: Kiểm tra xem service có báo lỗi 'User not found' nếu không tìm thấy người dùng khi cập nhật trạng thái hay không.
+    [Pre-condition]: User ID không tồn tại.
+    [Data Test]: userId='u-999'
+    [Steps]: 
+      1. Mock pool.query trả về rows rỗng [].
+      2. Gọi hàm adminService.updateUserStatus.
+    [Expected Result]: Ném ra lỗi 'User not found'.
+    */
     it('should throw error if user not found', async () => {
        (pool.query as jest.Mock).mockResolvedValue({ rows: [] }); // Không tìm thấy user
        
@@ -138,16 +233,27 @@ describe('AdminService', () => {
     });
   });
 
-  // Bổ sung thêm test case lỗi cho updateListingStatus 
   describe('updateListingStatus Error', () => {
+     /*
+     [Description]: Kiểm tra xem transaction có được rollback và báo lỗi 'Listing not found' nếu không tìm thấy bài đăng để cập nhật trạng thái hay không.
+     [Pre-condition]: Transaction bắt đầu nhưng câu lệnh UPDATE không tìm thấy bản ghi.
+     [Data Test]: listingId='999'
+     [Steps]: 
+       1. Mock BEGIN thành công.
+       2. Mock UPDATE trả về rowCount: 0.
+       3. Gọi hàm adminService.updateListingStatus.
+     [Expected Result]: 
+       - Ném ra lỗi 'Listing not found'.
+       - Transaction thực hiện ROLLBACK.
+     */
      it('should throw error if listing not found during status update', async () => {
-        mockClient.query.mockResolvedValueOnce({}); // BEGIN
-        mockClient.query.mockResolvedValueOnce({ rowCount: 0 }); // Update trả về 0 dòng
+       mockClient.query.mockResolvedValueOnce({}); // BEGIN
+       mockClient.query.mockResolvedValueOnce({ rowCount: 0 }); // Update trả về 0 dòng
 
-        await expect(adminService.updateListingStatus('999', 'approved' as any, 'admin'))
-          .rejects.toThrow('Listing not found');
-          
-        expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+       await expect(adminService.updateListingStatus('999', 'approved' as any, 'admin'))
+         .rejects.toThrow('Listing not found');
+         
+       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
      });
   });
 });
