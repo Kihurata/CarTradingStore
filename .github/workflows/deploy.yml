@@ -3,7 +3,9 @@ name: CI/CD Pipeline (Test & Auto-Deploy)
 on:
   push:
     branches: [ "deploy" ]
-
+permissions:
+  contents: read
+  issues: write
 jobs:
   # ------------------------------------------------------------------
   # JOB 1: BACKEND (Test Unit, Integration & Build Check)
@@ -113,3 +115,27 @@ jobs:
       
       - name: Trigger Render Deploy (Frontend)
         run: curl -X POST ${{ secrets.RENDER_FRONTEND_HOOK }}
+
+# ------------------------------------------------------------------
+# JOB 4: BÁO LỖI (Chỉ chạy khi có job bị fail)
+# ------------------------------------------------------------------
+  report-failure:
+    # Đảm bảo Job này chạy sau khi các Job khác đã hoàn thành (dù thành công hay thất bại)
+    needs: [backend-ci, frontend-ci, deploy-production]
+    # QUAN TRỌNG: Chỉ chạy nếu có bất kỳ Job nào trong `needs` thất bại
+    if: failure() 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Create Issue on Failure
+        # Sử dụng GitHub CLI để tạo Issue mới
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🚨 CI/CD Failed: ${{ github.workflow }} #${{ github.run_number }}" \
+            --body "Pipeline thất bại tại commit: ${{ github.sha }}.%0A%0AXem chi tiết logs tại đây: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --label "bug" \
+            --assignee "${{ github.actor }}"

@@ -122,7 +122,7 @@ describe('AdminController', () => {
     */
     it('should return stats data', async () => {
       req.query = { period: 'month' };
-      (statsService.getStats as jest.Mock).mockResolvedValue({ total_users: 10 });
+      (statsService.getStats as jest.Mock).mockResolvedValue({ total_users: 999 });/* sửa test fail để test issue logger github*/
 
       await adminController.getAdminStats(req as Request, res as Response);
 
