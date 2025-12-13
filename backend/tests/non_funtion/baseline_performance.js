@@ -3,12 +3,10 @@ import { check, sleep } from "k6";
 
 const BASE_URL = __ENV.BASE_URL || "https://cartrading-frontend.onrender.com/";
 
-// ✅ Sửa lại path theo hệ thống của bạn
 const PATHS = {
   home: "/",
   list: "/listings?page=1",
-  detail: "/listings/1", // nếu không có id=1 thì sửa
-  health: "/health",     // nếu không có thì đổi thành "/api/health" hoặc bỏ
+  detail: "/listings/1", // load listingspage detail 1 or 2 đều được
 };
 
 export const options = {
