@@ -13,7 +13,6 @@ jobs:
   backend-ci:
     runs-on: ubuntu-latest
     
-    # Tạo Database ảo để chạy Integration Test
     services:
       postgres:
         image: postgres:15-alpine
@@ -45,7 +44,6 @@ jobs:
           cd backend
           npm ci
 
-      # Tạo .env giả để chạy test
       - name: Create Dummy .env
         run: |
           cd backend
@@ -60,27 +58,18 @@ jobs:
           echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
 
-      # Chuẩn bị DB và chạy Test
       - name: Prepare Database & Run Tests
         run: |
-          # Cài client để chạy lệnh SQL
           sudo apt-get update && sudo apt-get install -y postgresql-client
-
-          # Đợi DB sẵn sàng
           export PGPASSWORD=password_fake
           sleep 5
-          
-          # Nạp dữ liệu bảng và mẫu
           psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/init.sql
           psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/seed.sql
 
           cd backend
-          # Chạy Unit Test
           npm run test:unit -- --coverage
-          # Chạy Integration Test
           npm run test:int -- --runInBand --forceExit
 
-      # Build thử Docker Backend (Kiểm tra cú pháp)
       - name: Verify Backend Docker Build
         run: |
           cd backend
@@ -95,39 +84,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Build thử Docker Frontend (Kiểm tra cú pháp)
       - name: Verify Frontend Docker Build
         run: |
           cd frontend
-          # Link API này chỉ để test build, không ảnh hưởng code thật
           docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
 
-# ------------------------------------------------------------------
-  # JOB 3: SMOKE TEST (Chạy Docker Compose trên CI để test)
+  # ------------------------------------------------------------------
+  # JOB 3: SMOKE TEST (System Health Check)
   # ------------------------------------------------------------------
   smoke-test:
+    # Chỉ chạy khi code đã build OK
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 1. Tạo file .env cho Backend (Khớp với docker-compose.yml)
+      # 1. Tạo file .env cho Backend (SỬA LỖI ENV TẠI ĐÂY)
       - name: Create Backend .env
         run: |
           cd backend
           echo "PORT=4000" > .env
           echo "NODE_ENV=test" >> .env
-          # QUAN TRỌNG: Host phải là tên service trong docker-compose
           echo "DB_HOST=database" >> .env 
           echo "DB_PORT=5432" >> .env
-          # QUAN TRỌNG: User/Pass phải khớp mục environment của service database
           echo "DB_USER=postgres" >> .env
           echo "DB_PASSWORD=password123" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
           echo "SUPABASE_URL=https://fake.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
+          echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
+          echo "SUPABASE_ANON_KEY=fake-key" >> .env
+          # --------------------------------------------------------------
 
       # 2. Tạo file .env cho Frontend
       - name: Create Frontend .env
@@ -140,15 +129,16 @@ jobs:
         run: |
           docker compose up -d --build
           echo "Containers are starting..."
+          sleep 10 # Đợi một chút cho DB init xong
           docker compose ps
 
-      # 4. Chạy Script Smoke Test
+      # 4. Chạy Script Smoke Test (Đường dẫn đã đúng)
       - name: Run Smoke Test Script
         run: |
           chmod +x backend/tests/smoke/run_smoke.sh
           ./backend/tests/smoke/run_smoke.sh
 
-      # 5. (Debug) Nếu lỗi thì in log ra xem tại sao
+      # 5. Debug log
       - name: Dump Docker Logs on Failure
         if: failure()
         run: |
@@ -160,16 +150,16 @@ jobs:
           docker compose logs frontend
           docker compose down
 
-      # 6. Dọn dẹp
       - name: Stop Containers
         if: always()
         run: docker compose down
 
   # ------------------------------------------------------------------
-  # JOB 4: DEPLOY TO RENDER (Chỉ chạy khi 2 job trên OK)
+  # JOB 4: DEPLOY TO RENDER 
   # ------------------------------------------------------------------
   deploy-production:
-    needs: [backend-ci, frontend-ci] 
+    # QUAN TRỌNG: Phải đợi smoke-test xong mới được deploy
+    needs: [smoke-test] 
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/deploy' 
     steps:
@@ -179,13 +169,12 @@ jobs:
       - name: Trigger Render Deploy (Frontend)
         run: curl -X POST ${{ secrets.RENDER_FRONTEND_HOOK }}
 
-# ------------------------------------------------------------------
-# JOB 5: BÁO LỖI (Chỉ chạy khi có job bị fail)
-# ------------------------------------------------------------------
+  # ------------------------------------------------------------------
+  # JOB 5: BÁO LỖI 
+  # ------------------------------------------------------------------
   report-failure:
-    # Đảm bảo Job này chạy sau khi các Job khác đã hoàn thành (dù thành công hay thất bại)
-    needs: [backend-ci, frontend-ci, deploy-production]
-    # QUAN TRỌNG: Chỉ chạy nếu có bất kỳ Job nào trong `needs` thất bại
+    # Thêm smoke-test vào danh sách needs
+    needs: [backend-ci, frontend-ci, smoke-test, deploy-production]
     if: failure() 
     runs-on: ubuntu-latest
     steps:
@@ -193,7 +182,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Create Issue on Failure
-        # Sử dụng GitHub CLI để tạo Issue mới
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
