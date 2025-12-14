@@ -102,8 +102,71 @@ jobs:
           # Link API này chỉ để test build, không ảnh hưởng code thật
           docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
 
+# ------------------------------------------------------------------
+  # JOB 3: SMOKE TEST (Chạy Docker Compose trên CI để test)
   # ------------------------------------------------------------------
-  # JOB 3: DEPLOY TO RENDER (Chỉ chạy khi 2 job trên OK)
+  smoke-test:
+    needs: [backend-ci, frontend-ci]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 1. Tạo file .env cho Backend (Khớp với docker-compose.yml)
+      - name: Create Backend .env
+        run: |
+          cd backend
+          echo "PORT=4000" > .env
+          echo "NODE_ENV=test" >> .env
+          # QUAN TRỌNG: Host phải là tên service trong docker-compose
+          echo "DB_HOST=database" >> .env 
+          echo "DB_PORT=5432" >> .env
+          # QUAN TRỌNG: User/Pass phải khớp mục environment của service database
+          echo "DB_USER=postgres" >> .env
+          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_NAME=cartradingstore" >> .env
+          echo "JWT_SECRET=ci_smoke_test_secret" >> .env
+          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
+          echo "SUPABASE_KEY=fake-key" >> .env
+
+      # 2. Tạo file .env cho Frontend
+      - name: Create Frontend .env
+        run: |
+          cd frontend
+          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+
+      # 3. Build và Chạy Docker Compose
+      - name: Start Containers
+        run: |
+          docker compose up -d --build
+          echo "Containers are starting..."
+          docker compose ps
+
+      # 4. Chạy Script Smoke Test
+      - name: Run Smoke Test Script
+        run: |
+          chmod +x backend/tests/smoke/run_smoke.sh
+          ./backend/tests/smoke/run_smoke.sh
+
+      # 5. (Debug) Nếu lỗi thì in log ra xem tại sao
+      - name: Dump Docker Logs on Failure
+        if: failure()
+        run: |
+          echo "=== DATABASE LOGS ==="
+          docker compose logs database
+          echo "=== BACKEND LOGS ==="
+          docker compose logs backend
+          echo "=== FRONTEND LOGS ==="
+          docker compose logs frontend
+          docker compose down
+
+      # 6. Dọn dẹp
+      - name: Stop Containers
+        if: always()
+        run: docker compose down
+
+  # ------------------------------------------------------------------
+  # JOB 4: DEPLOY TO RENDER (Chỉ chạy khi 2 job trên OK)
   # ------------------------------------------------------------------
   deploy-production:
     needs: [backend-ci, frontend-ci] 
@@ -117,7 +180,7 @@ jobs:
         run: curl -X POST ${{ secrets.RENDER_FRONTEND_HOOK }}
 
 # ------------------------------------------------------------------
-# JOB 4: BÁO LỖI (Chỉ chạy khi có job bị fail)
+# JOB 5: BÁO LỖI (Chỉ chạy khi có job bị fail)
 # ------------------------------------------------------------------
   report-failure:
     # Đảm bảo Job này chạy sau khi các Job khác đã hoàn thành (dù thành công hay thất bại)
