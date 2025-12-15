@@ -7,7 +7,7 @@ const router = Router();
 
 router.get('/', authenticateToken, requireAdmin, userController.getAllUsers);
 router.get('/:id', authenticateToken, userController.getUser);
-router.get('/me', authenticateToken, userController.getMe);  // Thêm
+router.get('/me', authenticateToken, userController.getMe);
 router.post('/', authenticateToken, requireAdmin, userController.createUser);
 router.patch('/:id/lock', authenticateToken, requireAdmin, userController.lockUser);
 router.delete('/:id', authenticateToken, requireAdmin, userController.deleteUser);
