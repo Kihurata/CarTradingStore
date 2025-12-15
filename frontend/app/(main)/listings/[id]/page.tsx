@@ -132,6 +132,43 @@ export default function ListingDetailPage() {
     }
   }
 
+  // ✅ Kiểm tra số điện thoại hợp lệ (VN: 10 chữ số)
+  const isValidPhoneNumber = (phone: string | null | undefined): boolean => {
+    if (!phone) return false;
+    // Loại bỏ khoảng trắng, dấu gạch ngang, dấu cộng
+    const cleaned = phone.replace(/[\s\-+()]/g, "");
+    // Số điện thoại VN có 10 chữ số hoặc bắt đầu bằng +84 (12 ký tự)
+    return /^\d{10}$/.test(cleaned) || /^\+84\d{9}$/.test(cleaned);
+  };
+
+  // ✅ Xử lý click nút Zalo
+  const handleZaloClick = () => {
+    if (!car?.seller_phone) {
+      alert("Người bán không có số điện thoại");
+      return;
+    }
+
+    if (!isValidPhoneNumber(car.seller_phone)) {
+      alert("Số điện thoại không hợp lệ");
+      return;
+    }
+
+    // Chuẩn hóa số điện thoại (loại bỏ ký tự không cần thiết)
+    const cleaned = car.seller_phone.replace(/[\s\-+()]/g, "");
+    
+    // Nếu là +84, chuyển sang 0
+    let phoneForZalo = cleaned;
+    if (cleaned.startsWith("84")) {
+      phoneForZalo = "0" + cleaned.substring(2);
+    } else if (cleaned.startsWith("+84")) {
+      phoneForZalo = "0" + cleaned.substring(3);
+    }
+
+    // Mở Zalo (có thể mở web Zalo hoặc app)
+    const zaloUrl = `https://zalo.me/${phoneForZalo}`;
+    window.open(zaloUrl, "_blank");
+  };
+
   const handleSaveFavorite = async () => {
     if (!id) return;
     if (savingFavorite) return;
@@ -271,8 +308,13 @@ export default function ListingDetailPage() {
             ☎ {car.seller_phone || "Không có số điện thoại"}
           </p>
           <button
-            className="mt-3 w-full bg-blue-600 text-white rounded-lg py-2 
-                      hover:bg-blue-700 flex items-center justify-center gap-2"
+            onClick={handleZaloClick}
+            disabled={!isValidPhoneNumber(car.seller_phone)}
+            className={`mt-3 w-full rounded-lg py-2 flex items-center justify-center gap-2 transition
+                      ${isValidPhoneNumber(car.seller_phone) 
+                        ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer" 
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+            title={isValidPhoneNumber(car.seller_phone) ? "Liên hệ qua Zalo" : "Số điện thoại không hợp lệ"}
           >
             <Image
               src="/zalo.png"
