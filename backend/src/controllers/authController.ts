@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import pool from "../config/database";
 import { sendResetEmail } from "../utils/email";
+import { createPasswordResetToken, resetUserPassword } from "../services/userService";
 import logger from "../utils/logger";
 
 /**
@@ -158,19 +159,21 @@ export const login = async (req: import("express").Request, res: import("express
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    if (!email) return res.status(400).json({ error: "Vui lòng nhập email" });
 
-    if (!rows[0]) {
-      return res.status(404).json({ error: "Không tìm thấy người dùng" });
+    // Gọi hàm tạo token mới ở Service
+    const token = await createPasswordResetToken(email);
+
+    if (token) {
+      // Chỉ gửi mail khi có token (email tồn tại)
+      await sendResetEmail(email, token);
     }
 
-    await sendResetEmail(email, rows[0].id);
-    res.json({ success: true, message: "Email khôi phục đã được gửi" });
+    // Luôn trả về thành công để bảo mật (tránh dò email)
+    res.json({ success: true, message: "Nếu email tồn tại, link reset đã được gửi." });
   } catch (err: any) {
-    logger?.error(`Forgot password error: ${err.message}`);
-    res.status(500).json({ error: "Lỗi máy chủ khi gửi email khôi phục" });
+    console.error(`Forgot password error: ${err.message}`);
+    res.status(500).json({ error: "Lỗi máy chủ" });
   }
 };
 
@@ -181,16 +184,23 @@ export const forgotPassword = async (req: Request, res: Response) => {
  */
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { userId, newPassword } = req.body;
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
-      passwordHash,
-      userId,
-    ]);
-    res.json({ success: true, message: "Đặt lại mật khẩu thành công" });
+    const { token, newPassword } = req.body;
+    
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "Thiếu thông tin cần thiết" });
+    }
+
+    // Gọi hàm reset ở Service
+    const success = await resetUserPassword(token, newPassword);
+
+    if (!success) {
+      return res.status(400).json({ error: "Token không hợp lệ hoặc đã hết hạn" });
+    }
+
+    res.json({ success: true, message: "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại." });
   } catch (err: any) {
-    logger?.error(`Reset password error: ${err.message}`);
-    res.status(500).json({ error: "Lỗi máy chủ khi đặt lại mật khẩu" });
+    console.error(`Reset password error: ${err.message}`);
+    res.status(500).json({ error: "Lỗi máy chủ" });
   }
 };
 
