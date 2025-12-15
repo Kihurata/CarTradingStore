@@ -1,14 +1,27 @@
 import request from 'supertest';
 import express from 'express';
+// Import tất cả để dùng cho assertion (expect)
 import * as adminController from '../../../src/controllers/adminController';
 
+// 1. Mock Middleware: Phải mock ĐỦ cả authenticateToken
 jest.mock('../../../src/middleware/auth', () => ({
-  // Giả lập middleware requireAdmin: luôn cho phép request đi qua
-  requireAdmin: (req: any, res: any, next: any) => next(), 
+  authenticateToken: (req: any, res: any, next: any) => next(), // <--- Thêm dòng này
+  requireAdmin: (req: any, res: any, next: any) => next(),
 }));
 
-jest.mock('../../../src/controllers/adminController');
+// 2. Mock Controller: Nên mock rõ ràng (Factory) để tránh lỗi import undefined
+jest.mock('../../../src/controllers/adminController', () => ({
+  getListings: jest.fn((req, res) => res.status(200).send()),
+  getAdminStats: jest.fn((req, res) => res.status(200).send()),
+  updateUserStatusHandler: jest.fn((req, res) => res.status(200).send()),
+  getUsers: jest.fn((req, res) => res.status(200).send()), // <--- Quan trọng
+  updateListingStatusHandler: jest.fn(),
+  updateListingHandler: jest.fn(),
+  getReports: jest.fn(),
+  printStats: jest.fn(),
+}));
 
+// 3. Import Routes (Luôn import sau khi mock)
 import adminRoutes from '../../../src/routes/adminRoutes';
 
 const app = express();
@@ -16,50 +29,29 @@ app.use(express.json());
 app.use('/api/admin', adminRoutes);
 
 describe('Unit Test: Admin Routes', () => {
+  // Clear mock để tránh test này ảnh hưởng test kia
   afterEach(() => jest.clearAllMocks());
 
-  /*
-  [Description]: Kiểm tra route GET /listings có gọi đúng controller getListings hay không.
-  [Pre-condition]: Middleware requireAdmin được mock để luôn cho phép (next).
-  [Data Test]: Method: GET, Path: '/api/admin/listings'
-  [Steps]: 
-    1. Mock adminController.getListings trả về status 200.
-    2. Gửi request GET đến '/api/admin/listings'.
-  [Expected Result]: Controller adminController.getListings được gọi chính xác.
-  */
   it('GET /listings should call adminController.getListings', async () => {
-    (adminController.getListings as jest.Mock).mockImplementation((req, res) => res.sendStatus(200));
+    // Không cần mockImplementation lại nếu ở trên đã có default, 
+    // nhưng giữ lại cũng không sao để rõ ràng logic test
     await request(app).get('/api/admin/listings');
     expect(adminController.getListings).toHaveBeenCalled();
   });
 
-  /*
-  [Description]: Kiểm tra route GET /stats có gọi đúng controller getAdminStats hay không.
-  [Pre-condition]: Middleware requireAdmin được mock để luôn cho phép.
-  [Data Test]: Method: GET, Path: '/api/admin/stats'
-  [Steps]: 
-    1. Mock adminController.getAdminStats trả về status 200.
-    2. Gửi request GET đến '/api/admin/stats'.
-  [Expected Result]: Controller adminController.getAdminStats được gọi chính xác.
-  */
   it('GET /stats should call adminController.getAdminStats', async () => {
-    (adminController.getAdminStats as jest.Mock).mockImplementation((req, res) => res.sendStatus(200));
     await request(app).get('/api/admin/stats');
     expect(adminController.getAdminStats).toHaveBeenCalled();
   });
 
-  /*
-  [Description]: Kiểm tra route PATCH /users/:id/status có gọi đúng controller updateUserStatusHandler hay không.
-  [Pre-condition]: Middleware requireAdmin được mock để luôn cho phép.
-  [Data Test]: Method: PATCH, Path: '/api/admin/users/123/status'
-  [Steps]: 
-    1. Mock adminController.updateUserStatusHandler trả về status 200.
-    2. Gửi request PATCH đến '/api/admin/users/123/status'.
-  [Expected Result]: Controller adminController.updateUserStatusHandler được gọi chính xác.
-  */
   it('PATCH /users/:id/status should call adminController.updateUserStatusHandler', async () => {
-    (adminController.updateUserStatusHandler as jest.Mock).mockImplementation((req, res) => res.sendStatus(200));
     await request(app).patch('/api/admin/users/123/status');
     expect(adminController.updateUserStatusHandler).toHaveBeenCalled();
+  });
+  
+  // Test thêm cho route bị lỗi lúc nãy để đảm bảo nó chạy
+  it('GET /users should call adminController.getUsers', async () => {
+    await request(app).get('/api/admin/users');
+    expect(adminController.getUsers).toHaveBeenCalled();
   });
 });
