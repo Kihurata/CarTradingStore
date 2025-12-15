@@ -191,6 +191,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
             type="email"
             placeholder="Email *"
             value={email}
+            data-testid="auth-login-email-input"
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
@@ -200,6 +201,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
             type="password"
             placeholder="Mật khẩu *"
             value={password}
+            data-testid="auth-login-password-input"
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
@@ -252,6 +254,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
           <button
             type="submit"
             disabled={loading}
+            data-testid="auth-login-submit-btn"
             className="w-full bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[16px] font-semibold py-3 rounded transition-colors"
           >
             {loading

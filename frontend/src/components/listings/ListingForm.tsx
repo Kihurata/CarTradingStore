@@ -48,6 +48,9 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [submitError, setSubmitError] = useState<string>("");
+
   // Form data state
   const [formData, setFormData] = useState({
     year: "",
@@ -311,7 +314,6 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitted(true);
-    setIsLoading(true);
 
     // Validation
     const requiredFields = [
@@ -329,12 +331,17 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
       { field: images.length > 0, name: "Ảnh xe" }
     ];
 
+    
+
     const missingFields = requiredFields.filter(item => !item.field);
     if (missingFields.length > 0) {
       alert(`Vui lòng điền đầy đủ các trường bắt buộc:\n${missingFields.map(f => f.name).join('\n')}`);
       setIsLoading(false);
       return;
     }
+    setSubmitState("submitting");
+    setSubmitError("");
+    setIsLoading(true);
 
     try {
       const formDataToSend = new FormData();
@@ -379,12 +386,15 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
     : "/api/listings";
 
     const method = isEdit ? "PUT" : "POST";
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 180s
 
       const response = await fetch(endpoint, {
         method,
         body: formDataToSend,
         credentials: "include",
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -393,6 +403,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
         
       }
 
+      setSubmitState("success");
       const result = await response.json();
       console.log("✅ Đăng tin thành công:", result);
 
@@ -409,6 +420,8 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
       }
       
     } catch (error: any) {
+      setSubmitState("error");
+      setSubmitError(error?.message || "unknown error");
       console.error("❌ Lỗi khi đăng tin:", error);
       alert(`Đăng tin thất bại: ${error.message}`);
     } finally {
@@ -472,6 +485,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     </label>
                     <select
                       value={brandId}
+                      data-testid="listing-create-brand-select"
                       onChange={(e) => {
                         const newBrandId = e.target.value ? Number(e.target.value) : "";
                         setBrandId(newBrandId);
@@ -490,13 +504,14 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     )}
                   </div>
 
-                  {/* DÒNG XE - ĐÃ SỬA */}
+                  {/* DÒNG XE */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Dòng xe<span className="text-red-500">*</span>
                     </label>
                     <select
                       value={modelId}
+                      data-testid="listing-create-model-select"
                       onChange={(e) => setModelId(e.target.value ? Number(e.target.value) : "")}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
@@ -523,6 +538,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       maxLength={4}        
                       placeholder="Nhập năm sản xuất"
                       value={formData.year}
+                      data-testid="listing-create-year-input"
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^0-9]/g, '');
                         setFormData({ ...formData, year: value });
@@ -546,6 +562,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       maxLength={6}        
                       placeholder="Nhập số km đã đi"
                       value={formData.mileage_km}
+                      data-testid="listing-create-mileage-input"
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^0-9]/g, '');
                         setFormData({ ...formData, mileage_km: value });
@@ -570,6 +587,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                               type="radio"
                               name="origin"
                               value="trong-nuoc"
+                              data-testid="listing-create-origin-input"
                               checked={formData.origin === "trong-nuoc"}
                               onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                               className="w-4 h-4"
@@ -581,6 +599,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                               type="radio"
                               name="origin"
                               value="nhap-khau"
+                              data-testid="listing-create-origin-input"
                               checked={formData.origin === "nhap-khau"}
                               onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                               className="w-4 h-4"
@@ -600,6 +619,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                           <select
                             className="w-full px-3 py-2 border rounded"
                             value={formData.color_ext || ""}
+                            data-testid="listing-create-color-ext-select"
                             onChange={(e) => setFormData({ ...formData, color_ext: e.target.value })}
                           >
                             <option value="">Chọn màu</option>
@@ -638,6 +658,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                           <select
                             className="w-full px-3 py-2 border rounded"
                             value={formData.color_int || ""}
+                            data-testid="listing-create-color-int-select"
                             onChange={(e) => setFormData({ ...formData, color_int: e.target.value })}
                           >
                             <option value="">Chọn màu</option>
@@ -656,11 +677,13 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                           <div className="mt-2 flex items-center gap-2">
                             <input
                               type="color"
+                              data-testid="listing-create-color-int-picker"
                               onChange={(e) => setFormData({ ...formData, color_int: e.target.value })}
                               className="w-10 h-10 p-0 border rounded"
                             />
                             <input
                               type="text"
+                              data-testid="listing-create-color-iny-hex-input"
                               placeholder="#RRGGBB"
                               onChange={(e) => setFormData({ ...formData, color_int: e.target.value.trim() })}
                               className="px-3 py-2 border rounded w-36"
@@ -678,6 +701,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     </label>
                     <select
                       value={formData.gearbox}
+                      data-testid="listing-create-gearbox-select"
                       onChange={(e) => setFormData({ ...formData, gearbox: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                     >
@@ -694,6 +718,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     </label>
                     <select
                       value={formData.fuel}
+                      data-testid="listing-create-fuel-select"
                       onChange={(e) => setFormData({ ...formData, fuel: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                     >
@@ -711,6 +736,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     </label>
                     <select
                       value={formData.body_type}
+                      data-testid="listing-create-bodytype-select"
                       onChange={(e) => setFormData({ ...formData, body_type: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
@@ -742,6 +768,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     </label>
                     <select
                       value={formData.seats}
+                      data-testid="listing-create-seats-select"
                       onChange={(e) => setFormData({ ...formData, seats: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                     >
@@ -778,6 +805,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                         inputMode="numeric"  
                         placeholder="Nhập giá bán xe"
                         value={formData.price_vnd}
+                        data-testid="listing-create-price-input"
                         onChange={(e) => {
                           const value = e.target.value.replace(/[^0-9]/g, '');
                           setFormData({ ...formData, price_vnd: value });
@@ -811,6 +839,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       type="text"
                       placeholder="Ngắn gọn, dễ đọc, tô khéo quan trọng gây chú ý"
                       value={formData.title}
+                      data-testid="listing-create-title-input"
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
@@ -828,6 +857,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     <textarea
                       placeholder="- Mô tả chi tiết về xe&#10;- Tình trạng sơ thẩm của xe&#10;- Tình trạng pháp lý của xe&#10;- Thông tin về bảo hiểm xe&#10;- Tình trạng giấy tờ..."
                       value={formData.description}
+                      data-testid="listing-create-description-textarea"
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={8}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 resize-none"
@@ -863,6 +893,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       readOnly
                       placeholder="Nhập tên người bán"
                       value={formData.seller_name}
+                      data-testid="listing-create-seller-name"
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 bg-gray-100"
                       required
                     />
@@ -877,6 +908,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       type="tel" 
                       readOnly
                       value={formData.seller_phone}
+                      data-testid="listing-create-seller-phone"
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 bg-gray-100"
                       placeholder="0931353214"
                       required
@@ -893,6 +925,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       readOnly
                       placeholder="Nhập địa chỉ người bán"
                       value={formData.address_line}
+                      data-testid="listing-create-address-line"
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 bg-gray-100"
                       required
                     />
@@ -910,6 +943,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                         value={provinceId}
+                        data-testid="listing-create-province-select"
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : "";
                           setProvinceId(value);
@@ -933,6 +967,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       <select
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                         value={districtId}
+                        data-testid="listing-create-district-select"
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : "";
                           setDistrictId(value);
@@ -957,6 +992,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
               <div className="flex gap-4 relative z-10">
                 <button
                   type="button"
+                  data-testid="listing-create-preview-btn"
                   className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded font-medium hover:bg-gray-50 transition-colors"
                 >
                   Xem trước tin đăng
@@ -965,14 +1001,21 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                 <button
                   type="submit"
                   disabled={isLoading}
+                  data-testid="listing-create-submit-btn"
                   className="flex-1 py-3 bg-[#5CB85C] hover:bg-[#4CAE4C] disabled:bg-gray-400 text-white rounded font-medium transition-colors"
                 >
                   {submitLabel}
                 </button>
+                <div data-testid="listing-create-submit-state" className="hidden">
+                  {submitState}
+                </div>
+                <div data-testid="listing-create-submit-error" className="hidden">
+                  {submitError}
+                </div>
               </div>
             </div>
 
-            {/* PHẦN ẢNH & VIDEO - GIỮ NGUYÊN */}
+            {/* PHẦN ẢNH & VIDEO */}
             <div className="lg:col-span-1">
               <div className="bg-blue-50 rounded-lg shadow p-6 sticky top-24 z-0">
                 <h3 className="text-[16px] font-semibold text-blue-600 mb-4">ĐĂNG ẢNH & VIDEO XE</h3>
@@ -994,6 +1037,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                     type="file"
                     accept="image/*"
                     multiple
+                    data-testid="listing-create-image-upload"
                     className="hidden"
                     onChange={(e) => onSelectImages(e.target.files)}
                   />

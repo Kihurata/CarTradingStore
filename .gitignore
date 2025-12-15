@@ -43,3 +43,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+#selenium
+.venv/
+__pycache__/
+.pytest_cache/
