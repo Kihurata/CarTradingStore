@@ -290,6 +290,8 @@ export const editListing = async (req: Request, res: Response) => {
   }
 };
 
+
+
 export const getProvinces = async (req: Request, res: Response) => {
   const data = await listingService.listProvinces();
   res.json({ data });
