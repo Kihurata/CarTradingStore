@@ -6,6 +6,7 @@ import ReportModal from "@/src/components/listings/ReportModal";
 import Gallery from "@/src/components/listings/Gallery"; 
 import { useParams } from "next/navigation"; 
 import { formatPriceVND } from "@/lib/formatCurrency";
+import Image from "next/image";
 
 interface ListingDetail {
   id: string;
@@ -269,8 +270,17 @@ export default function ListingDetailPage() {
           <p className="text-gray-800 mt-3 font-semibold">
             ☎ {car.seller_phone || "Không có số điện thoại"}
           </p>
-          <button className="mt-3 w-full bg-blue-600 text-white rounded-lg py-2 hover:bg-blue-700">
-            Gọi ngay
+          <button
+            className="mt-3 w-full bg-blue-600 text-white rounded-lg py-2 
+                      hover:bg-blue-700 flex items-center justify-center gap-2"
+          >
+            <Image
+              src="/zalo.png"
+              alt="Zalo"
+              width={20}
+              height={20}
+            />
+            <span className="font-semibold">Zalo</span>
           </button>
         </aside>
       </div>
