@@ -35,6 +35,9 @@ export default function ListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [openReport, setOpenReport] = useState(false); 
 
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false); // tạm thời default false, sau này có thể load từ API
+
   // ✅ Lấy id từ useParams() (client-safe)
   const params = useParams<{ id: string }>();
   const id = params?.id as string | undefined;
@@ -128,7 +131,31 @@ export default function ListingDetailPage() {
     }
   }
 
-
+  const handleSaveFavorite = async () => {
+    if (!id) return;
+    if (savingFavorite) return;
+  
+    try {
+      setSavingFavorite(true);
+  
+      await api(`/listings/${id}/favorite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ listingId: id }), // để khớp với backend hiện tại
+      });
+  
+      setIsFavorite(true);
+      // TODO: sau này thay bằng toast UI đẹp hơn
+      // alert("Đã lưu tin!");
+    } catch (err: any) {
+      console.error("add favorite error", err);
+      alert("Không thể lưu tin. Vui lòng thử lại.");
+    } finally {
+      setSavingFavorite(false);
+    }
+  };  
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
@@ -220,11 +247,12 @@ export default function ListingDetailPage() {
               <span>{new Date(car.created_at || Date.now()).toLocaleDateString("vi-VN")}</span>
               <span className="text-gray-300">|</span>
               <button
-                className="flex items-center gap-1 text-gray-700 hover:text-black font-semibold"
-                onClick={() => alert("Đã lưu tin!")}
+                className="flex items-center gap-1 text-gray-700 hover:text-black font-semibold disabled:opacity-60"
+                onClick={handleSaveFavorite}
+                disabled={savingFavorite || isFavorite}
               >
-                <span>♡</span>
-                <span>Lưu tin</span>
+                <span>{isFavorite ? "❤" : "♡"}</span>
+                <span>{isFavorite ? "Đã lưu" : "Lưu tin"}</span>
               </button>
             </div>
           </div>

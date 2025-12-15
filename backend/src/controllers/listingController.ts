@@ -174,15 +174,44 @@ export const getUserListings = async (req: Request, res: Response) => {
   }
 };
 
-
 export const addFavorite = async (req: Request, res: Response) => {
   try {
     const userId = (req.user as any).id;
-    const { listingId } = req.body;
+    const listingId = req.params.id || req.body.listingId; // ⬅ thêm params
+
+    if (!listingId) {
+      return res.status(400).json({ error: "Missing listingId" });
+    }
+
     const favorite = await listingService.addFavorite(userId, listingId);
     res.status(201).json({ data: favorite });
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
+  }
+};
+
+
+export const getUserFavorites = async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as any)?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Đồng bộ cách đọc query với getAllListings
+    const page  = toPositiveInt(req.query.page, 1);
+    const limit = toPositiveInt(req.query.limit, 9, 60);
+
+    // Gọi service tương ứng
+    const { items, total } = await listingService.getUserFavorites(userId, page, limit);
+
+    const totalPages = Math.max(1, Math.ceil((total || 0) / limit));
+
+    return res.json({
+      data: items,
+      meta: { page, limit, total, totalPages },
+    });
+  } catch (err) {
+    console.error("getUserFavorites error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 

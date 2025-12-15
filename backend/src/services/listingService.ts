@@ -194,8 +194,6 @@ export async function getUserListings(
   return { items, total };
 }
 
-
-
 export async function getListingById(id: string) {
   const sql = `
     SELECT
@@ -494,7 +492,7 @@ export async function getAllListingsAdmin() {
   return rows;
 }
 
-
+// Thêm bài đăng yêu thích
 export async function addFavorite(userId: string, listingId: string) {
   const { rows } = await pool.query(
     'INSERT INTO favorites (user_id, listing_id) VALUES ($1, $2) RETURNING *',
@@ -503,6 +501,70 @@ export async function addFavorite(userId: string, listingId: string) {
   await logAudit(userId, 'favorite.add', 'listing', listingId);
   return rows[0];
 }
+
+// Lấy danh sách bài đăng yêu thích
+export async function getUserFavorites(
+  userId: string,
+  page = 1,
+  limit = 10,
+): Promise<{
+  items: (Listing & {
+    thumbnail_url?: string;
+    seller_name?: string | null;
+    seller_phone?: string | null;
+  })[];
+  total: number;
+}> {
+  const offset = (page - 1) * limit;
+
+  const params: (string | number)[] = [userId];
+  const where: string[] = ["f.user_id = $1"];
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  // limit/offset luôn ở 2 tham số cuối
+  params.push(limit);
+  params.push(offset);
+
+  const sql = `
+    SELECT
+      l.*,
+      b.name AS brand,
+      m.name AS model,
+      u.name  AS seller_name,
+      u.phone AS seller_phone,
+      (
+        SELECT li.public_url
+        FROM listing_images li
+        WHERE li.listing_id = l.id
+        ORDER BY li.position ASC, li.created_at ASC
+        LIMIT 1
+      ) AS thumbnail_url,
+      COUNT(*) OVER() AS total_count
+    FROM favorites f
+    JOIN listings l ON l.id = f.listing_id
+    JOIN brands b ON l.brand_id = b.id
+    JOIN models m ON l.model_id = m.id
+    JOIN users  u ON u.id = l.seller_id
+    ${whereSql}
+    ORDER BY f.created_at DESC
+    LIMIT $${params.length - 1} OFFSET $${params.length};
+  `;
+
+  const { rows } = await pool.query(sql, params);
+
+  const total = rows[0] ? Number(rows[0].total_count) : 0;
+  const items = rows.map(({ total_count, ...rest }) =>
+    rest as Listing & {
+      thumbnail_url?: string;
+      seller_name?: string | null;
+      seller_phone?: string | null;
+    }
+  );
+
+  return { items, total };
+}
+
 
 export async function addComparison(userId: string, leftListingId: string, rightListingId: string) {
   const id = require('uuid').v4();

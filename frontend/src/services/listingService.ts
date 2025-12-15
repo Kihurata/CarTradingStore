@@ -55,3 +55,14 @@ export async function updateListing(id: string, formData: FormData): Promise<voi
   });
   if (!res.ok) throw new Error("Cập nhật listing thất bại");
 }
+
+// bài đăng yêu thích
+export async function getUserFavorites(id: string): Promise<Listing[]> {
+  const res = await fetch(apiUrl("listings/favorites"), {
+    cache: "no-store",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Lấy danh sách yêu thích thất bại");
+  const json = await res.json();
+  return json.data as Listing[];
+}

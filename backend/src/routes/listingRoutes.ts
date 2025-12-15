@@ -22,9 +22,11 @@ router.get("/models", listingController.getModelsByBrand);
 // Bài đăng của chính user (self)
 router.get("/self", authenticateToken, listingController.getUserListings);
 
+// Bài đăng yêu thích
+router.get("/favorites", authenticateToken, listingController.getUserFavorites);
+
 // Chi tiết 1 bài đăng
 router.get("/:id", listingController.getListing);
-
 
 // 🧩 Tạo mới listing (chấp nhận cả JSON hoặc multipart)
 router.post(
