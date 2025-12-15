@@ -3,6 +3,7 @@ import { getAdminListings, updateListingStatus, updateListing, getListingReports
 import { getStats as getStatsService } from '../services/statsService';
 import { generateStatsPDF } from '../utils/pdfGenerator';
 import pool from '../config/database';
+import { UserStatus } from '../models/user';
 
 export const getListings = async (req: Request, res: Response) => {
   try {
@@ -47,10 +48,19 @@ export const getReports = async (req: Request, res: Response) => {
 };
 
 export const getUsers = async (req: Request, res: Response) => {
-  try {
-    const { status, page = '1', limit = '10' } = req.query;
-    const users = await getAdminUsers(status as any, parseInt(page as string), parseInt(limit as string));
-    res.json({ data: users, page: parseInt(page as string) });
+  try{
+    const page  = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const status = (req.query.status as UserStatus) || null;
+
+    const { items, total } = await getAdminUsers(status, page, limit);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+
+    return res.json({
+      data: items,
+      meta: { page, limit, total, totalPages },
+    });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }

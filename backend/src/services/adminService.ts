@@ -56,17 +56,61 @@ export async function getListingReports(listingId: string) {
   return rows;
 }
 
-export async function getAdminUsers(status?: UserStatus, page: number = 1, limit: number = 10) {
+export async function getAdminUsers(
+  status: UserStatus | null = null,  // null = tất cả trạng thái
+  page: number = 1,
+  limit: number = 10
+): Promise<{
+  items: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    address: string | null;
+    status: UserStatus;
+    total_listings: number;
+  }[];
+  total: number;
+}> {
   const offset = (page - 1) * limit;
+
   const query = `
-    SELECT * FROM users
-    WHERE ($1::user_status IS NULL OR status = $1)
-    ORDER BY created_at DESC
+    SELECT
+      u.id,
+      u.name,
+      u.phone,
+      u.address,
+      u.status,
+      COALESCE(COUNT(l.id), 0) AS total_listings,
+      COUNT(*) OVER() AS total_count
+    FROM users u
+    LEFT JOIN listings l ON l.seller_id = u.id
+    WHERE
+      u.is_admin = FALSE
+      AND ($1::user_status IS NULL OR u.status = $1)
+    GROUP BY
+      u.id, u.name, u.phone, u.address, u.status, u.created_at
+    ORDER BY
+      total_listings DESC,
+      u.created_at DESC
     LIMIT $2 OFFSET $3
   `;
+
   const { rows } = await pool.query(query, [status, limit, offset]);
-  return rows;
+
+  const total = rows[0] ? Number(rows[0].total_count) : 0;
+
+  const items = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    address: row.address,
+    status: row.status as UserStatus,
+    total_listings: Number(row.total_listings || 0),
+  }));
+
+  return { items, total };
 }
+
 
 export async function updateUserStatus(userId: string, status: UserStatus, adminId: string) {
   const { rows } = await pool.query(

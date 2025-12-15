@@ -1,5 +1,6 @@
+// backend/src/routes/adminRoutes.ts
 import { Router } from 'express';
-import { requireAdmin } from '../middleware/auth';
+import { authenticateToken,requireAdmin } from '../middleware/auth';
 import { getListings, updateListingStatusHandler, updateListingHandler, getReports, getUsers, updateUserStatusHandler, getAdminStats, printStats } from '../controllers/adminController';
 
 const router = Router();
@@ -11,7 +12,7 @@ router.patch('/listings/:id', requireAdmin, updateListingHandler);
 router.get('/listings/:id/reports', requireAdmin, getReports);
 
 // Quản lý người dùng (UC3)
-router.get('/users', requireAdmin, getUsers);
+router.get('/users',authenticateToken, requireAdmin, getUsers);
 router.patch('/users/:id/status', requireAdmin, updateUserStatusHandler);
 
 // Thống kê (UC2.1-2.2)

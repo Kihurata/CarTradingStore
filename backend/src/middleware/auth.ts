@@ -39,7 +39,7 @@ export const authenticateTokenOptional = (req: Request, res: Response, next: Nex
   }
 
   try {
-    const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+    const secret = process.env.JWT_SECRET || "Kz2w!p3#N7tq@h1Yd9uZxFv$e4Rj%T8m^A6sG0b*C5rLkQWnP2oE#V!yH@JxZ";
     const decoded = jwt.verify(token, secret) as JwtPayload;
     req.user = decoded;
     next();
@@ -51,6 +51,7 @@ export const authenticateTokenOptional = (req: Request, res: Response, next: Nex
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  console.log("requireAdmin check, user:", req.user);
   if (!req.user?.is_admin) return res.status(403).json({ error: 'Admin required' });
   next();
 };
