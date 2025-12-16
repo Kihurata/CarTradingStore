@@ -109,7 +109,7 @@ jobs:
           echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
           echo "SUPABASE_URL=https://fake.supabase.co" >> .env
@@ -187,11 +187,11 @@ jobs:
           echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=123456" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
-          echo "SUPABASE_URL=https://ybhdhpmledyxuzdrrnzp.supabase.co" >> .env
-          echo "SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliaGRocG1sZWR5eHV6ZHJybnpwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NTkwMSwiZXhwIjoyMDc1NTcxOTAxfQ.Wu-V_HfepG0n8aZMIKntbxSBn8XvZvQQUERlLIQKO2c" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
           echo "SUPABASE_BUCKET=cars" >> .env
 
       - name: Create Frontend .env
