@@ -2,7 +2,7 @@ name: 02 - E2E Selenium Tests
 
 on:
   workflow_run:
-    workflows: ["01 - Integration & Smoke Test"] 
+    workflows: ["01 - Integration & Smoke Test"]
     types:
       - completed
 
@@ -25,6 +25,7 @@ jobs:
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
       E2E_DATA_FILE: "create_listing_valid.json"
+      NEXT_PUBLIC_API_URL: http://backend:4000
 
     steps:
       - name: Checkout Code
@@ -36,21 +37,21 @@ jobs:
           cd backend
           echo "PORT=4000" > .env
           echo "NODE_ENV=test" >> .env
-          echo "DB_HOST=database" >> .env 
+          echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
-          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
-          echo "SUPABASE_KEY=fake-key" >> .env
-          echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
-          echo "SUPABASE_ANON_KEY=fake-key" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
+          echo "SUPABASE_BUCKET=cars" >> .env
 
       - name: Create Frontend .env
         run: |
           cd frontend
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+          echo "INTERNAL_API_BASE=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=/api" >> .env
 
       - name: Start Containers
         run: |
@@ -58,17 +59,9 @@ jobs:
           sleep 10
           docker compose ps
 
-      - name: Wait for Frontend
+      - name: Wait for Database Ready
         run: |
-          for i in {1..60}; do
-            if curl -fsS http://localhost:3000 >/dev/null; then
-              echo "Frontend up"
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose logs --no-color --tail=200
-          exit 1
+          timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
 
       - name: Set up Python
         uses: actions/setup-python@v5
