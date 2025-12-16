@@ -13,7 +13,6 @@ router.patch('/listings/:id/status', requireAdmin, updateListingStatusHandler);
 router.patch('/listings/:id', requireAdmin, updateListingHandler);
 router.get('/listings/:id/reports', requireAdmin, getReports);
 
-// ✅ Áp dụng cho toàn bộ admin routes
 router.use(authenticateToken, requireAdmin);
 
 // Quản lý bài đăng
