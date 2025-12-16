@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: cartradingstore
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_PASSWORD: password123
       POSTGRES_HOST_AUTH_METHOD: md5
     ports:
       - "5432:5432"
