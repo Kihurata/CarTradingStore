@@ -250,14 +250,42 @@ jobs:
           docker compose logs frontend
           exit 1
 
-      - name: Debug API Connectivity
+      - name: Debug API Connectivity (Using Node.js)
         run: |
-          echo "Testing Connectivity from Host to Backend..."
-          curl -v http://localhost:4000/api/listings/brands || echo "Warning: Host cannot reach Backend directly"
+          echo "🔍 Checking API inside Docker Network..."
 
-          echo "Testing Connectivity inside Docker Network..."
-          # Lệnh này giả lập việc Frontend gọi Backend
-          docker compose exec -T frontend curl -v http://backend:4000/api/listings/brands || echo "❌ Frontend cannot reach Backend!"
+          # 1. Host check (Giữ nguyên cái này vì nó đang chạy tốt)
+          echo "--- Host checking Backend ---"
+          curl -s http://localhost:4000/api/listings/brands | head -c 100
+          echo "..."
+
+          # 2. Frontend Container check (Dùng Node thay vì curl)
+          echo "--- Frontend container checking Backend ---"
+          # Script này dùng module 'http' có sẵn của Node để gọi sang backend:4000
+          docker compose exec -T frontend node -e '
+            const http = require("http");
+            const options = {
+              hostname: "backend",
+              port: 4000,
+              path: "/api/listings/brands",
+              method: "GET"
+            };
+            const req = http.request(options, (res) => {
+              console.log("Status Code:", res.statusCode);
+              if (res.statusCode === 200) {
+                console.log("✅ Connection Successful!");
+                process.exit(0);
+              } else {
+                console.log("❌ Connection Failed with status:", res.statusCode);
+                process.exit(1);
+              }
+            });
+            req.on("error", (e) => {
+              console.error("❌ Network Error:", e.message);
+              process.exit(1);
+            });
+            req.end();
+          '
 
       - name: Set up Python
         uses: actions/setup-python@v5
