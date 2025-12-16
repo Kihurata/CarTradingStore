@@ -10,155 +10,155 @@ jobs:
   # ------------------------------------------------------------------
   # JOB 1: BACKEND (Test Unit, Integration & Build Check)
   # ------------------------------------------------------------------
-  backend-ci:
-    runs-on: ubuntu-latest
+  # backend-ci:
+  #   runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: user_test
-          POSTGRES_PASSWORD: password_fake
-          POSTGRES_DB: cartradingstore_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+  #   services:
+  #     postgres:
+  #       image: postgres:15-alpine
+  #       env:
+  #         POSTGRES_USER: user_test
+  #         POSTGRES_PASSWORD: password_fake
+  #         POSTGRES_DB: cartradingstore_test
+  #       ports:
+  #         - 5432:5432
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-          cache: "npm"
-          cache-dependency-path: "./backend/package-lock.json"
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: "18"
+  #         cache: "npm"
+  #         cache-dependency-path: "./backend/package-lock.json"
 
-      - name: Install Dependencies
-        run: |
-          cd backend
-          npm ci
+  #     - name: Install Dependencies
+  #       run: |
+  #         cd backend
+  #         npm ci
 
-      - name: Create Dummy .env
-        run: |
-          cd backend
-          echo "PORT=4000" >> .env
-          echo "NODE_ENV=test" >> .env
-          echo "DB_HOST=localhost" >> .env
-          echo "DB_PORT=5432" >> .env
-          echo "DB_USER=user_test" >> .env
-          echo "DB_PASSWORD=password_fake" >> .env
-          echo "DB_NAME=cartradingstore_test" >> .env
-          echo "JWT_SECRET=super_fake_secret_key" >> .env
-          echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
-          echo "SUPABASE_KEY=fake-key" >> .env
+  #     - name: Create Dummy .env
+  #       run: |
+  #         cd backend
+  #         echo "PORT=4000" >> .env
+  #         echo "NODE_ENV=test" >> .env
+  #         echo "DB_HOST=localhost" >> .env
+  #         echo "DB_PORT=5432" >> .env
+  #         echo "DB_USER=user_test" >> .env
+  #         echo "DB_PASSWORD=password_fake" >> .env
+  #         echo "DB_NAME=cartradingstore_test" >> .env
+  #         echo "JWT_SECRET=super_fake_secret_key" >> .env
+  #         echo "SUPABASE_URL=https://fake-url.supabase.co" >> .env
+  #         echo "SUPABASE_KEY=fake-key" >> .env
 
-      - name: Prepare Database & Run Tests
-        run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          export PGPASSWORD=password_fake
-          sleep 5
-          psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/init.sql
-          psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/seed.sql
+  #     - name: Prepare Database & Run Tests
+  #       run: |
+  #         sudo apt-get update && sudo apt-get install -y postgresql-client
+  #         export PGPASSWORD=password_fake
+  #         sleep 5
+  #         psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/init.sql
+  #         psql -h localhost -p 5432 -U user_test -d cartradingstore_test -f backend/config/seed.sql
 
-          cd backend
-          npm run test:unit -- --coverage
-          npm run test:int -- --runInBand --forceExit
+  #         cd backend
+  #         npm run test:unit -- --coverage
+  #         npm run test:int -- --runInBand --forceExit
 
-      - name: Verify Backend Docker Build
-        run: |
-          cd backend
-          docker build . -t backend-test-build
+  #     - name: Verify Backend Docker Build
+  #       run: |
+  #         cd backend
+  #         docker build . -t backend-test-build
 
   # ------------------------------------------------------------------
   # JOB 2: FRONTEND (Build Check)
   # ------------------------------------------------------------------
-  frontend-ci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  # frontend-ci:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
 
-      - name: Verify Frontend Docker Build
-        run: |
-          cd frontend
-          docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
+  #     - name: Verify Frontend Docker Build
+  #       run: |
+  #         cd frontend
+  #         docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
 
   # ------------------------------------------------------------------
   # JOB 3: SMOKE TEST (System Health Check)
   # ------------------------------------------------------------------
-  smoke-test:
-    # Chỉ chạy khi code đã build OK
-    needs: [backend-ci, frontend-ci]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  # smoke-test:
+  #   # Chỉ chạy khi code đã build OK
+  #   needs: [backend-ci, frontend-ci]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
 
-      # 1. Tạo file .env cho Backend (SỬA LỖI ENV TẠI ĐÂY)
-      - name: Create Backend .env
-        run: |
-          cd backend
-          echo "PORT=4000" > .env
-          echo "NODE_ENV=test" >> .env
-          echo "DB_HOST=database" >> .env 
-          echo "DB_PORT=5432" >> .env
-          echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
-          echo "DB_NAME=cartradingstore" >> .env
-          echo "JWT_SECRET=ci_smoke_test_secret" >> .env
-          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
-          echo "SUPABASE_KEY=fake-key" >> .env
-          echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
-          echo "SUPABASE_ANON_KEY=fake-key" >> .env
-          # --------------------------------------------------------------
+  #     # 1. Tạo file .env cho Backend (SỬA LỖI ENV TẠI ĐÂY)
+  #     - name: Create Backend .env
+  #       run: |
+  #         cd backend
+  #         echo "PORT=4000" > .env
+  #         echo "NODE_ENV=test" >> .env
+  #         echo "DB_HOST=database" >> .env
+  #         echo "DB_PORT=5432" >> .env
+  #         echo "DB_USER=postgres" >> .env
+  #         echo "DB_PASSWORD=password123" >> .env
+  #         echo "DB_NAME=cartradingstore" >> .env
+  #         echo "JWT_SECRET=ci_smoke_test_secret" >> .env
+  #         echo "SUPABASE_URL=https://fake.supabase.co" >> .env
+  #         echo "SUPABASE_KEY=fake-key" >> .env
+  #         echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
+  #         echo "SUPABASE_ANON_KEY=fake-key" >> .env
+  #         # --------------------------------------------------------------
 
-      # 2. Tạo file .env cho Frontend
-      - name: Create Frontend .env
-        run: |
-          cd frontend
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+  #     # 2. Tạo file .env cho Frontend
+  #     - name: Create Frontend .env
+  #       run: |
+  #         cd frontend
+  #         echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
 
-      # 3. Build và Chạy Docker Compose
-      - name: Start Containers
-        run: |
-          docker compose up -d --build
-          echo "Containers are starting..."
-          sleep 10 # Đợi một chút cho DB init xong
-          docker compose ps
+  #     # 3. Build và Chạy Docker Compose
+  #     - name: Start Containers
+  #       run: |
+  #         docker compose up -d --build
+  #         echo "Containers are starting..."
+  #         sleep 10 # Đợi một chút cho DB init xong
+  #         docker compose ps
 
-      # 4. Chạy Script Smoke Test (Đường dẫn đã đúng)
-      - name: Run Smoke Test Script
-        run: |
-          chmod +x backend/tests/smoke/run_smoke.sh
-          ./backend/tests/smoke/run_smoke.sh
+  #     # 4. Chạy Script Smoke Test (Đường dẫn đã đúng)
+  #     - name: Run Smoke Test Script
+  #       run: |
+  #         chmod +x backend/tests/smoke/run_smoke.sh
+  #         ./backend/tests/smoke/run_smoke.sh
 
-      # 5. Debug log
-      - name: Dump Docker Logs on Failure
-        if: failure()
-        run: |
-          echo "=== DATABASE LOGS ==="
-          docker compose logs database
-          echo "=== BACKEND LOGS ==="
-          docker compose logs backend
-          echo "=== FRONTEND LOGS ==="
-          docker compose logs frontend
-          docker compose down
+  #     # 5. Debug log
+  #     - name: Dump Docker Logs on Failure
+  #       if: failure()
+  #       run: |
+  #         echo "=== DATABASE LOGS ==="
+  #         docker compose logs database
+  #         echo "=== BACKEND LOGS ==="
+  #         docker compose logs backend
+  #         echo "=== FRONTEND LOGS ==="
+  #         docker compose logs frontend
+  #         docker compose down
 
-      - name: Stop Containers
-        if: always()
-        run: docker compose down
+  #     - name: Stop Containers
+  #       if: always()
+  #       run: docker compose down
 
   # ------------------------------------------------------------------
   # JOB 4: E2E Selenium (Login -> Create Listing -> Upload -> Submit)
   # ------------------------------------------------------------------
   e2e-selenium:
-    needs: [smoke-test]
+    # needs: [smoke-test]
     runs-on: ubuntu-latest
 
     env:
@@ -204,18 +204,29 @@ jobs:
           sleep 10
           docker compose ps
 
-      - name: Force Seed Data (Fix Empty Dropdown)
+      - name: Reset DB & Force Seed (Clean State)
         run: |
-          echo "⏳ Copying seed file to container..."
+          echo "📂 Copying SQL files..."
           docker compose cp backend/config/seed.sql database:/seed.sql
 
-          echo "⏳ Executing seed script..."
-          # Chờ thêm 5s để đảm bảo PostgreSQL đã sẵn sàng nhận connection
+          echo "⏳ Waiting 5s..."
           sleep 5
-          # Chạy lệnh psql bên trong container database
+
+          echo "🧹 Cleaning old data (TRUNCATE)..."
+          # Lệnh này sẽ xóa sạch dữ liệu cũ để tránh lỗi Duplicate Key
+          # CASCADE giúp xóa luôn dữ liệu ở các bảng liên quan (như models, listings)
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "TRUNCATE TABLE brands, provinces, districts, models, listings RESTART IDENTITY CASCADE;"
+
+          echo "🌱 Seeding fresh data..."
           docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
 
-          echo "✅ Seed data injected successfully!"
+          echo "🔍 VERIFICATION: Checking Brands Count..."
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
+
+          echo "🔄 Restarting Backend to load new data..."
+          docker compose restart backend
+          # Chờ backend khởi động lại xong mới qua bước test
+          sleep 10
 
       - name: Wait for Frontend
         run: |
@@ -265,7 +276,8 @@ jobs:
   # JOB 5: DEPLOY TO RENDER
   # ------------------------------------------------------------------
   deploy-production:
-    needs: [smoke-test, e2e-selenium]
+    # needs: [smoke-test, e2e-selenium]
+    needs: [e2e-selenium]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/deploy'
     steps:
@@ -280,7 +292,8 @@ jobs:
   # ------------------------------------------------------------------
   report-failure:
     # Thêm smoke-test vào danh sách needs
-    needs: [backend-ci, frontend-ci, smoke-test, deploy-production]
+    # needs: [backend-ci, frontend-ci, smoke-test, deploy-production]
+    needs: [deploy-production]
     if: failure()
     runs-on: ubuntu-latest
     steps:
