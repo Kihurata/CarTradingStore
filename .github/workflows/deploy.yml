@@ -201,43 +201,53 @@ jobs:
       - name: Start Containers
         run: |
           docker compose up -d --build
+          echo "🚀 Containers started. Waiting for DB initialization..."
           sleep 10
-          docker compose ps
 
+      # BƯỚC MỚI: KIỂM TRA SỨC KHỎE DB TRƯỚC KHI NẠP
+      - name: Wait for Database Ready
+        run: |
+          # Vòng lặp chờ tối đa 60s cho đến khi Database trả lời "I'm ready"
+          timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
+
+      # BƯỚC QUAN TRỌNG NHẤT: RESET & FORCE SEED
       - name: Reset DB & Force Seed (Clean State)
         run: |
           echo "📂 Copying SQL files..."
           docker compose cp backend/config/seed.sql database:/seed.sql
 
-          echo "⏳ Waiting 5s..."
-          sleep 5
-
           echo "🧹 Cleaning old data (TRUNCATE)..."
-          # Lệnh này sẽ xóa sạch dữ liệu cũ để tránh lỗi Duplicate Key
-          # CASCADE giúp xóa luôn dữ liệu ở các bảng liên quan (như models, listings)
+          # Xóa sạch dữ liệu đang load dở dang hoặc bị trùng
           docker compose exec -T database psql -U postgres -d cartradingstore -c "TRUNCATE TABLE brands, provinces, districts, models, listings RESTART IDENTITY CASCADE;"
 
           echo "🌱 Seeding fresh data..."
           docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
 
           echo "🔍 VERIFICATION: Checking Brands Count..."
+          # Kiểm tra ngay lập tức xem có bao nhiêu hãng xe
           docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
 
           echo "🔄 Restarting Backend to load new data..."
           docker compose restart backend
-          # Chờ backend khởi động lại xong mới qua bước test
-          sleep 10
 
-      - name: Wait for Frontend
+      # TĂNG THỜI GIAN CHỜ FRONTEND/BACKEND
+      - name: Wait for Frontend & Backend Ready
         run: |
-          for i in {1..60}; do
+          echo "⏳ Waiting for services to stabilize..."
+          # Chờ backend khởi động lại và kết nối DB
+          sleep 15
+
+          # Check Frontend kỹ hơn
+          for i in {1..30}; do
             if curl -fsS http://localhost:3000 >/dev/null; then
-              echo "Frontend up"
+              echo "✅ Frontend is up!"
               exit 0
             fi
+            echo "Waiting for frontend..."
             sleep 2
           done
-          docker compose logs --no-color --tail=200
+          echo "❌ Frontend failed to start in time"
+          docker compose logs frontend
           exit 1
 
       - name: Set up Python
