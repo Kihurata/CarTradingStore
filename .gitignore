@@ -50,3 +50,7 @@ next-env.d.ts
 .env.production
 npm-debug.log
 .next
+#selenium
+.venv/
+__pycache__/
+.pytest_cache/

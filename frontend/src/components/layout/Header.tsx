@@ -93,6 +93,7 @@ export function Header() {
               <button
                 onClick={() => handleAuthClick("login")}
                 className="text-[15px] text-gray-700 hover:text-gray-900 whitespace-nowrap"
+                data-testid="auth-open-login-btn"
               >
                 Đăng Nhập / Đăng ký
               </button>

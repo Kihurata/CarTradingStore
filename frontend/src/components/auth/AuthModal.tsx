@@ -42,6 +42,12 @@ export function AuthModal({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Quen mat khau
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+
   if (!isOpen) return null;
 
 const handleSubmit = async (e: React.FormEvent) => {
@@ -119,6 +125,30 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 };
 
+const handleForgotPassword = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setForgotLoading(true);
+
+  try {
+    await api("/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: forgotEmail }),
+    });
+
+    alert("✅ Đã gửi hướng dẫn cấp lại mật khẩu về email (nếu email tồn tại).");
+    setShowForgot(false);
+    setForgotEmail("");
+  } catch (err: unknown) {
+    console.error("Forgot password error:", err);
+    let msg = "Cấp lại mật khẩu thất bại!";
+    if (err instanceof Error) msg = err.message;
+    alert(msg);
+  } finally {
+    setForgotLoading(false);
+  }
+};
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
@@ -161,6 +191,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             type="email"
             placeholder="Email *"
             value={email}
+            data-testid="auth-login-email-input"
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
@@ -170,11 +201,22 @@ const handleSubmit = async (e: React.FormEvent) => {
             type="password"
             placeholder="Mật khẩu *"
             value={password}
+            data-testid="auth-login-password-input"
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
           />
-
+          {activeTab === "login" && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
+          )}
           {activeTab === "register" && (
             <>
               <input
@@ -212,6 +254,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           <button
             type="submit"
             disabled={loading}
+            data-testid="auth-login-submit-btn"
             className="w-full bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[16px] font-semibold py-3 rounded transition-colors"
           >
             {loading
@@ -221,6 +264,49 @@ const handleSubmit = async (e: React.FormEvent) => {
               : "Đăng nhập"}
           </button>
         </form>
+        {showForgot && (
+        <div className="absolute inset-0 bg-white rounded-lg p-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-black">Quên mật khẩu</h3>
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="text-gray-500 hover:text-gray-700"
+              aria-label="Đóng quên mật khẩu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <input
+              type="email"
+              placeholder="Gmail / Email *"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
+              required
+            />
+
+            <button
+              type="submit"
+              disabled={forgotLoading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[16px] font-semibold py-3 rounded transition-colors"
+            >
+              {forgotLoading ? "Đang gửi..." : "Xác nhận"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="w-full border border-gray-300 text-gray-700 text-[16px] font-semibold py-3 rounded hover:bg-gray-50 transition-colors"
+            >
+              Quay lại đăng nhập
+            </button>
+          </form>
+        </div>
+      )}
+
       </div>
     </div>
   );

@@ -1,0 +1,7 @@
+{
+  "title": "E2E - Create Listing - Selenium",
+  "year": "2010",
+  "mileage_km": "5000",
+  "price_million": "450",
+  "description": "Tin test tự động: điền tất cả field (trừ YouTube), upload ảnh, submit, verify."
+}
