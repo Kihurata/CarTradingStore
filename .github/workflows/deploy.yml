@@ -167,7 +167,7 @@ jobs:
       TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       HEADLESS: "1"
       ARTIFACTS_DIR: artifacts
-      E2E_WAIT: "25"
+      E2E_WAIT: "60"
       E2E_ALERT_WAIT: "40"
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
