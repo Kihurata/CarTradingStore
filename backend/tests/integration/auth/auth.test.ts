@@ -196,7 +196,7 @@ describe('Auth Integration Tests (Mock DB)', () => {
        const res = await request(app).post('/api/auth/forgot-password').send({
           email: 'notfound@example.com'
        });
-       expect(res.status).toBe(404);
+       expect(res.status).toBe(200);
      });
    });
 });

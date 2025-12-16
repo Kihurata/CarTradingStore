@@ -11,6 +11,7 @@ jest.mock('../../../src/middleware/auth', () => ({
 
 // 2. Mock Controller: Nên mock rõ ràng (Factory) để tránh lỗi import undefined
 jest.mock('../../../src/controllers/adminController', () => ({
+  getDashboard: jest.fn((req, res) => res.status(200).send()),
   getListings: jest.fn((req, res) => res.status(200).send()),
   getAdminStats: jest.fn((req, res) => res.status(200).send()),
   updateUserStatusHandler: jest.fn((req, res) => res.status(200).send()),

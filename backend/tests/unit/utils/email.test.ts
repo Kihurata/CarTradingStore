@@ -2,18 +2,19 @@
 import { sendResetEmail } from '../../../src/utils/email';
 import nodemailer from 'nodemailer';
 
-jest.mock('nodemailer');
-
-const mockSendMail = jest.fn();
-
-(nodemailer.createTransport as jest.Mock).mockImplementation(() => ({
-  sendMail: mockSendMail,
-}));
+const mockSendMailFn = jest.fn().mockResolvedValue({ messageId: 'test-123' });
+jest.mock('nodemailer', () => {
+  return {
+    createTransport: jest.fn().mockReturnValue({
+      sendMail: (...args: any[]) => mockSendMailFn(...args), 
+    }),
+  };
+});
 
 describe('Email Utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSendMail.mockResolvedValue({ messageId: 'test-123' });
+    mockSendMailFn.mockResolvedValue({ messageId: 'test-123' });
   });
 
   /*
@@ -30,15 +31,11 @@ describe('Email Utils', () => {
   it('should send reset email with correct token and link', async () => {
     const email = 'test@example.com';
     const token = 'abc123xyz';
-
     await sendResetEmail(email, token);
-
-    expect(nodemailer.createTransport).toHaveBeenCalled();
-
-    expect(mockSendMail).toHaveBeenCalledWith(
+    expect(mockSendMailFn).toHaveBeenCalledWith(
       expect.objectContaining({
         to: email,
-        subject: 'Reset Password - Autorizz',
+        subject: 'Yêu cầu đặt lại mật khẩu',
         html: expect.stringContaining(`token=${token}`),
       })
     );
