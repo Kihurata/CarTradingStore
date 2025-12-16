@@ -404,4 +404,27 @@ describe('ListingService Unit Tests', () => {
        expect(res).toHaveLength(1);
      });
   });
+
+  // describe('updateListing - INTENTIONAL FAIL', () => {
+  //   /*
+  //   [Description]: Kiểm tra logic cập nhật bài đăng với giá tiền là số âm.
+  //   [Pre-condition]: Bài đăng tồn tại.
+  //   [Data Test]: updates = { price_vnd: -500000 }
+  //   [Steps]: 
+  //     1. Mock DB query trả về lỗi constraint check (vì giá không thể âm).
+  //     2. Gọi hàm listingService.updateListing().
+  //   [Expected Result]: Hàm thực thi thành công không ném lỗi (nhưng thực tế DB sẽ ném lỗi).
+  //   */
+  //   it('should update listing successfully with negative price', async () => {
+  //     const updates = { price_vnd: -500000 };
+      
+  //     mockClient.query.mockResolvedValueOnce({}); // BEGIN
+  //     // Giả lập DB thực tế sẽ chặn lại
+  //     mockClient.query.mockRejectedValueOnce(new Error('Constraint violation: price must be positive'));
+
+  //     // Fail tại đây: Ta expect nó resolve (thành công), nhưng nó sẽ reject (thất bại)
+  //     await expect(listingService.updateListing('1', updates, [], [], 'user-1'))
+  //       .resolves.not.toThrow();
+  //   });
+  // });
 });

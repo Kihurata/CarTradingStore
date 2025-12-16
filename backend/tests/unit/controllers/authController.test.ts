@@ -169,4 +169,30 @@ describe('AuthController', () => {
       expect(json).toHaveBeenCalledWith(expect.objectContaining({ token: 'mock-token' }));
     });
   });
+
+  // describe('register - INTENTIONAL FAIL', () => {
+  //   /*
+  //   [Description]: Kiểm tra quy trình đăng ký khi email thiếu ký tự '@'.
+  //   [Pre-condition]: DB hoạt động bình thường.
+  //   [Data Test]: req.body = { email: 'no_at_sign.com', password: '123' }
+  //   [Steps]: 
+  //     1. Mock pool.query ném lỗi (giả lập DB constraint check email).
+  //     2. Gọi hàm authController.register(req, res).
+  //   [Expected Result]: Response trả về status code 201 (nhưng thực tế là lỗi).
+  //   */
+  //   it('should register successfully with invalid email format', async () => {
+  //     req.body = {
+  //       email: 'no_at_sign.com',
+  //       password: 'password123',
+  //       confirmPassword: 'password123'
+  //     };
+
+  //     (pool.query as jest.Mock).mockRejectedValue(new Error('Invalid email format'));
+
+  //     await authController.register(req as Request, res as Response);
+
+  //     // Fail tại đây: Code thực tế sẽ vào catch block (trả 400/500), nhưng ta expect 201
+  //     expect(status).toHaveBeenCalledWith(201);
+  //   });
+  // });
 });

@@ -329,4 +329,24 @@ describe('ListingController', () => {
       expect(status).toHaveBeenCalledWith(400);
     });
   });
+
+  // describe('createListing - INTENTIONAL FAIL', () => {
+  //   /*
+  //   [Description]: Kiểm tra xem API có tạo bài đăng thành công không (nhưng cố tình truyền title rỗng).
+  //   [Pre-condition]: User đã đăng nhập.
+  //   [Data Test]: req.body = { title: '', price_vnd: '100', brand_id: '1' }
+  //   [Steps]: 
+  //     1. Mock listingService.createListing trả về { id: 'new-id' }.
+  //     2. Gọi hàm listingController.createListing(req, res).
+  //   [Expected Result]: Response trả về status code 201 (nhưng thực tế sẽ là 400 do validation).
+  //   */
+  //   it('should create listing successfully even with empty title', async () => {
+  //     req.body = { title: '', price_vnd: '100', brand_id: '1' }; 
+  //     (listingService.createListing as jest.Mock).mockResolvedValue({ id: 'new-id' });
+
+  //     await listingController.createListing(req as Request, res as Response);
+
+  //     expect(status).toHaveBeenCalledWith(201); 
+  //   });
+  // });
 });
