@@ -80,11 +80,17 @@ const handleSubmit = async (e: React.FormEvent) => {
       setConfirmPassword("");
     } else {
       // ✅ Đăng nhập
-      const data = await api<AuthResponse>("/auth/login", {
+      const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+
+      const res = await fetch(`${base}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // 👈 BẮT BUỘC để nhận cookie
       });
+
+      const data = await res.json();
+
 
       const { token, user } = data;
       if (!token || !user) throw new Error("Thiếu dữ liệu phản hồi từ server.");
@@ -191,6 +197,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
             type="email"
             placeholder="Email *"
             value={email}
+            data-testid="auth-login-email-input"
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
@@ -200,6 +207,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
             type="password"
             placeholder="Mật khẩu *"
             value={password}
+            data-testid="auth-login-password-input"
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded text-[15px] placeholder:text-gray-400 text-black focus:outline-none focus:border-gray-400"
             required
@@ -252,6 +260,7 @@ const handleForgotPassword = async (e: React.FormEvent) => {
           <button
             type="submit"
             disabled={loading}
+            data-testid="auth-login-submit-btn"
             className="w-full bg-[#5CB85C] hover:bg-[#4CAE4C] text-white text-[16px] font-semibold py-3 rounded transition-colors"
           >
             {loading

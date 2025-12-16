@@ -1,8 +1,7 @@
 {
-    "year": 2019,
-    "mileage_km": 25000,
-    "price_million_vnd": 450,
-    "title": "E2E - Honda Civic 2019 - Selenium",
-    "description": "Tin test tự động: tạo bài đăng hợp lệ."
+  "title": "E2E - Create Listing - Selenium",
+  "year": "2010",
+  "mileage_km": "5000",
+  "price_million": "450",
+  "description": "Tin test tự động: điền tất cả field (trừ YouTube), upload ảnh, submit, verify."
 }
-  
