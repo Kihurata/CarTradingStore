@@ -172,6 +172,8 @@ jobs:
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
       E2E_DATA_FILE: "create_listing_valid.json"
+      # [QUAN TRỌNG] Inject biến môi trường GLOBAL để Frontend Container đọc được
+      NEXT_PUBLIC_API_URL: http://backend:4000
 
     steps:
       - name: Checkout Code
@@ -196,7 +198,8 @@ jobs:
       - name: Create Frontend .env
         run: |
           cd frontend
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+          # [QUAN TRỌNG] Ghi đè file .env này cho chắc chắn
+          echo "NEXT_PUBLIC_API_URL=http://backend:4000" > .env
 
       - name: Start Containers
         run: |
@@ -204,40 +207,41 @@ jobs:
           echo "🚀 Containers started. Waiting for DB initialization..."
           sleep 10
 
-      # BƯỚC MỚI: KIỂM TRA SỨC KHỎE DB TRƯỚC KHI NẠP
       - name: Wait for Database Ready
         run: |
-          # Vòng lặp chờ tối đa 60s cho đến khi Database trả lời "I'm ready"
           timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
 
-      # BƯỚC QUAN TRỌNG NHẤT: RESET & FORCE SEED
       - name: Reset DB & Force Seed (Clean State)
         run: |
           echo "📂 Copying SQL files..."
           docker compose cp backend/config/seed.sql database:/seed.sql
 
           echo "🧹 Cleaning old data (TRUNCATE)..."
-          # Xóa sạch dữ liệu đang load dở dang hoặc bị trùng
           docker compose exec -T database psql -U postgres -d cartradingstore -c "TRUNCATE TABLE brands, provinces, districts, models, listings RESTART IDENTITY CASCADE;"
 
           echo "🌱 Seeding fresh data..."
           docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
 
           echo "🔍 VERIFICATION: Checking Brands Count..."
-          # Kiểm tra ngay lập tức xem có bao nhiêu hãng xe
           docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
 
+      - name: Restart Services & Check Env
+        run: |
           echo "🔄 Restarting Backend to load new data..."
           docker compose restart backend
 
-      # TĂNG THỜI GIAN CHỜ FRONTEND/BACKEND
-      - name: Wait for Frontend & Backend Ready
-        run: |
-          echo "⏳ Waiting for services to stabilize..."
-          # Chờ backend khởi động lại và kết nối DB
+          echo "🔄 Restarting Frontend to pick up new ENV..."
+          docker compose restart frontend
+
+          echo "⏳ Waiting 15s for services to stabilize..."
           sleep 15
 
-          # Check Frontend kỹ hơn
+          echo "🔍 DEBUG: Checking Frontend Environment Variables..."
+          # Kiểm tra xem Frontend đã nhận đúng URL chưa
+          docker compose exec -T frontend env | grep NEXT_PUBLIC_API_URL || echo "❌ VAR MISSING IN FRONTEND!"
+
+      - name: Wait for Frontend & Backend Ready
+        run: |
           for i in {1..30}; do
             if curl -fsS http://localhost:3000 >/dev/null; then
               echo "✅ Frontend is up!"
@@ -253,15 +257,7 @@ jobs:
       - name: Debug API Connectivity (Using Node.js)
         run: |
           echo "🔍 Checking API inside Docker Network..."
-
-          # 1. Host check (Giữ nguyên cái này vì nó đang chạy tốt)
-          echo "--- Host checking Backend ---"
-          curl -s http://localhost:4000/api/listings/brands | head -c 100
-          echo "..."
-
-          # 2. Frontend Container check (Dùng Node thay vì curl)
           echo "--- Frontend container checking Backend ---"
-          # Script này dùng module 'http' có sẵn của Node để gọi sang backend:4000
           docker compose exec -T frontend node -e '
             const http = require("http");
             const options = {
