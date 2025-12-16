@@ -31,17 +31,16 @@ export default function AdminUserCard({ user, onClick, onViewListings }: AdminUs
 
   // 👉 Toggle status ngay trong Client Component
   const toggleStatus = async () => {
-    const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
     const nextStatus =
       status === UserStatus.LOCKED ? UserStatus.ACTIVE : UserStatus.LOCKED;
 
-    await fetch(`${base}/api/admin/users/${user.id}/status`, {
+    await fetch(`/api/admin/users/${user.id}/status`, {
       method: "PATCH",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: nextStatus }),
     });
+
 
     // 🔄 refresh lại UI sau khi cập nhật
     startTransition(() => {

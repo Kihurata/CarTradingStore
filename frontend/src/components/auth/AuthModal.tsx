@@ -80,11 +80,17 @@ const handleSubmit = async (e: React.FormEvent) => {
       setConfirmPassword("");
     } else {
       // ✅ Đăng nhập
-      const data = await api<AuthResponse>("/auth/login", {
+      const base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+
+      const res = await fetch(`${base}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // 👈 BẮT BUỘC để nhận cookie
       });
+
+      const data = await res.json();
+
 
       const { token, user } = data;
       if (!token || !user) throw new Error("Thiếu dữ liệu phản hồi từ server.");
