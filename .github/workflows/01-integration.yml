@@ -95,30 +95,28 @@ jobs:
   # JOB 3: SMOKE TEST (System Health Check)
   # ------------------------------------------------------------------
   smoke-test:
-    # Chỉ chạy khi code đã build OK
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 1. Tạo file .env cho Backend (SỬA LỖI ENV TẠI ĐÂY)
+      # 1. Tạo file .env cho Backend
       - name: Create Backend .env
         run: |
           cd backend
           echo "PORT=4000" > .env
           echo "NODE_ENV=test" >> .env
-          echo "DB_HOST=database" >> .env 
+          echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
           echo "SUPABASE_URL=https://fake.supabase.co" >> .env
           echo "SUPABASE_KEY=fake-key" >> .env
           echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
           echo "SUPABASE_ANON_KEY=fake-key" >> .env
-          # --------------------------------------------------------------
 
       # 2. Tạo file .env cho Frontend
       - name: Create Frontend .env
@@ -131,10 +129,10 @@ jobs:
         run: |
           docker compose up -d --build
           echo "Containers are starting..."
-          sleep 10 # Đợi một chút cho DB init xong
+          sleep 10
           docker compose ps
 
-      # 4. Chạy Script Smoke Test 
+      # 4. Chạy Script Smoke Test
       - name: Run Smoke Test Script
         run: |
           chmod +x backend/tests/smoke/run_smoke.sh

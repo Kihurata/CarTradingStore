@@ -19,7 +19,6 @@ jobs:
     # Chỉ chạy khi File 2 thành công
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    # Logic kiểm tra nhánh đã được handle ở phần 'on', nhưng giữ lại cho chắc chắn
     steps:
       - name: Trigger Render Deploy (Backend)
         run: curl -X POST ${{ secrets.RENDER_BACKEND_HOOK }}
@@ -43,7 +42,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue create \
-            --title "🚨 CI/CD Failed: ${{ github.workflow }} #${{ github.run_number }}" \
+            --title " CI/CD Failed: ${{ github.workflow }} #${{ github.run_number }}" \
             --body "Pipeline thất bại tại commit: ${{ github.sha }}.%0A%0AXem chi tiết logs tại đây: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --label "bug" \
             --assignee "${{ github.actor }}"

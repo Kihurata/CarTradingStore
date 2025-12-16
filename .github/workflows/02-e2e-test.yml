@@ -2,7 +2,7 @@ name: 02 - E2E Selenium Tests
 
 on:
   workflow_run:
-    workflows: ["01 - Integration & Smoke Test"] 
+    workflows: ["01 - Integration & Smoke Test"]
     types:
       - completed
 
@@ -20,7 +20,7 @@ jobs:
       TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       HEADLESS: "1"
       ARTIFACTS_DIR: artifacts
-      E2E_WAIT: "25"
+      E2E_WAIT: "60"
       E2E_ALERT_WAIT: "40"
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
@@ -30,46 +30,96 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Tái tạo môi trường Docker (Cần thiết vì đây là máy ảo mới)
+      # 1. Tạo Environment Variables
       - name: Create Backend .env
         run: |
           cd backend
           echo "PORT=4000" > .env
           echo "NODE_ENV=test" >> .env
-          echo "DB_HOST=database" >> .env 
+          echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
-          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
-          echo "SUPABASE_KEY=fake-key" >> .env
-          echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
-          echo "SUPABASE_ANON_KEY=fake-key" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
+          echo "SUPABASE_BUCKET=cars" >> .env
 
       - name: Create Frontend .env
         run: |
           cd frontend
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+          echo "INTERNAL_API_BASE=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=/api" >> .env
 
+      # 2. Khởi động Container
       - name: Start Containers
         run: |
           docker compose up -d --build
+          echo "🚀 Containers started. Waiting for DB..."
           sleep 10
-          docker compose ps
 
-      - name: Wait for Frontend
+      # 3. Chắc chắn DB đã sống trước khi Seed
+      - name: Wait for Database Ready
         run: |
-          for i in {1..60}; do
-            if curl -fsS http://localhost:3000 >/dev/null; then
-              echo "Frontend up"
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose logs --no-color --tail=200
-          exit 1
+          timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
 
+      # 4. QUAN TRỌNG: Seed dữ liệu sạch (Dùng docker exec cho tiện, không cần cài psql host)
+      - name: Reset & Seed Database
+        run: |
+          echo "📂 Copying SQL files..."
+          docker compose cp backend/config/seed.sql database:/seed.sql
+
+          echo "🧹 Cleaning & Seeding..."
+          # TRUNCATE để xóa sạch dữ liệu rác nếu có, tránh duplicate
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "TRUNCATE TABLE brands, provinces, districts, models, listings RESTART IDENTITY CASCADE;"
+          # Nạp dữ liệu
+          docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
+
+          # Verify ngay lập tức
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
+
+      # 5. QUAN TRỌNG NHẤT: Restart để Backend nhận dữ liệu mới
+      - name: Restart Services
+        run: |
+          echo "🔄 Restarting Backend & Frontend to refresh data cache..."
+          docker compose restart backend frontend
+          sleep 15
+
+      - name: Verify INTERNAL_API_BASE exists
+        run: |
+          docker compose exec -T frontend sh -lc 'echo "INTERNAL_API_BASE=$INTERNAL_API_BASE"'
+
+      # 6. Kiểm tra API thật sự có dữ liệu chưa (Không chỉ check 200 OK)
+      - name: Verify Backend Data (Check Brands > 0)
+        run: |
+          echo "🔍 Checking if Brands are loaded..."
+          # Script này check xem mảng trả về có độ dài > 0 không
+          docker compose exec -T frontend node -e '
+            const http = require("http");
+            const req = http.request({
+              hostname: "backend", port: 4000, path: "/api/listings/brands", method: "GET"
+            }, res => {
+              let data = "";
+              res.on("data", chunk => data += chunk);
+              res.on("end", () => {
+                const json = JSON.parse(data);
+                console.log("Response:", json);
+                // Kiểm tra xem có dữ liệu brands không
+                if (res.statusCode === 200 && json.data && json.data.length > 0) {
+                  console.log("✅ Brands loaded successfully!");
+                  process.exit(0);
+                } else {
+                  console.error("❌ API 200 OK but NO DATA!");
+                  process.exit(1);
+                }
+              });
+            });
+            req.on("error", (e) => { console.error(e); process.exit(1); });
+            req.end();
+          '
+
+      # 7. Setup & Run Test
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
