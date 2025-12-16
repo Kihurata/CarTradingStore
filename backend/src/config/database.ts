@@ -18,7 +18,7 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'cartradingstore',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password123',
+  password: process.env.DB_PASSWORD || '123456',
 });
 
 // Retry connect với max 10 attempts

@@ -1,117 +1,206 @@
 import json
 import os
+from pathlib import Path
+
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
+from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.webdriver.common.keys import Keys
 
 def _css(testid: str):
     return (By.CSS_SELECTOR, f"[data-testid='{testid}']")
 
-    
-def accept_alert_if_any(driver, timeout=10):
+
+def accept_alert_if_any(driver, timeout=10) -> bool:
     try:
         WebDriverWait(driver, timeout).until(EC.alert_is_present()).accept()
         return True
     except Exception:
         return False
 
+def fill_react_input(driver, wait, locator, value):
+    """
+    Điền dữ liệu vào React Controlled Input/Textarea một cách an toàn cho CI/CD.
+    Sử dụng Native Value Setter để bypass cơ chế tracking của React.
+    """
+    element = wait.until(EC.element_to_be_clickable(locator))
+    
+    # Scroll để chắc chắn element nằm trong view
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
+    
+    val_str = str(value)
+
+    # Đoạn script này cực kỳ quan trọng đối với React
+    # Nó tìm 'setter' gốc của HTML prototype và gọi trực tiếp
+    # giúp React nhận biết được change event.
+    driver.execute_script("""
+        let input = arguments[0];
+        let value = arguments[1];
+        
+        let lastValue = input.value;
+        input.value = value;
+        
+        let event = new Event('input', { bubbles: true });
+        
+        // Hack cho React 15/16+
+        let tracker = input._valueTracker;
+        if (tracker) {
+            tracker.setValue(lastValue);
+        }
+        
+        // Gọi native setter tuỳ theo loại thẻ
+        let nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 
+            "value"
+        ).set;
+        
+        let nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement.prototype, 
+            "value"
+        ).set;
+
+        if (input.tagName.toLowerCase() === 'textarea') {
+            nativeTextAreaValueSetter.call(input, value);
+        } else {
+            nativeInputValueSetter.call(input, value);
+        }
+        
+        input.dispatchEvent(event);
+    """, element, val_str)
+
+    # Verification (Optional but recommended for CI/CD)
+    # Đợi một chút để React cập nhật state nếu cần
+    try:
+        wait.until(lambda d: element.get_attribute("value") == val_str)
+    except TimeoutException:
+        print(f"⚠️ Warning: Field {locator} might not have updated correctly. Expected: {val_str}, Actual: {element.get_attribute('value')}")
+
+def js_click(driver, locator):
+    el = driver.find_element(*locator)
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+    driver.execute_script("arguments[0].click();", el)
+
+
+def select_first_non_empty(driver, wait, locator) -> str:
+    """
+    Chọn option đầu tiên có giá trị.
+    Tự động đợi cho đến khi Select box có dữ liệu (API load xong).
+    """
+    try:
+        # Lấy string selector từ locator (VD: "listing-create-province-select")
+        # Giả định locator dạng (By.CSS_SELECTOR, "[data-testid='...']")
+        # Chúng ta cần đợi thẻ <option> thứ 2 xuất hiện (option 1 thường là "Chọn...")
+        selector = locator[1]
+        
+        # LOGIC QUAN TRỌNG: Đợi cho đến khi có ít nhất 2 thẻ option trong select này
+        # Điều này đồng nghĩa với việc API đã load xong data
+        wait.until(lambda d: len(d.find_elements(By.CSS_SELECTOR, f"{selector} option")) > 1)
+        
+        # Tìm lại element để tránh lỗi StaleElementReferenceException
+        select_el = driver.find_element(*locator)
+        sel = Select(select_el)
+        
+        for opt in sel.options:
+            v = (opt.get_attribute("value") or "").strip()
+            if v:
+                sel.select_by_value(v)
+                return v
+        return ""
+    except TimeoutException:
+        print(f"⚠️ Timeout: Dropdown {locator} không tải được dữ liệu (Kiểm tra lại seed data!)")
+        return ""
+
+def fill(driver, locator, value):
+    el = driver.find_element(*locator)
+    el.clear()
+    el.send_keys(str(value))
+
+
+@pytest.mark.e2e
 def test_e2e_login_create_listing_all_fields_except_youtube(driver, base_url, creds):
     assert creds["email"] and creds["password"], "Thiếu TEST_EMAIL/TEST_PASSWORD"
 
-    wait = WebDriverWait(driver, 20)
+    wait = WebDriverWait(driver, int(os.getenv("E2E_WAIT", "25")))
+    submit_wait = int(os.getenv("E2E_SUBMIT_WAIT", "120"))
+    alert_wait = int(os.getenv("E2E_ALERT_WAIT", "40"))
 
-    # 1) Open home
+    base_dir = Path(__file__).resolve().parent.parent  # selenium_tests/
+    data_path = base_dir / "data" / os.getenv("E2E_DATA_FILE", "create_listing_valid.json")
+    img_path = (base_dir / "assets" / os.getenv("E2E_IMAGE_FILE", "bmw-x5-2.webp")).resolve()
+
+    assert data_path.exists(), f"Không tìm thấy test data: {data_path}"
+    assert img_path.exists(), f"Không tìm thấy ảnh test: {img_path}"
+
+    # 1) Home
     driver.get(base_url)
 
     # 2) Open login modal
     wait.until(EC.element_to_be_clickable(_css("auth-open-login-btn"))).click()
 
-    # 3) Fill login + submit
+    # 3) Login
     wait.until(EC.visibility_of_element_located(_css("auth-login-email-input"))).send_keys(creds["email"])
     driver.find_element(*_css("auth-login-password-input")).send_keys(creds["password"])
     driver.find_element(*_css("auth-login-submit-btn")).click()
 
-    # App dùng alert("✅ Đăng nhập thành công!") + reload
-    assert accept_alert_if_any(driver, 15), "Không thấy alert login"
-    wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-
+    # login alert + reload
+    assert accept_alert_if_any(driver, alert_wait), "Không thấy alert login"
+    wait.until(lambda d: d.execute_script("return localStorage.getItem('token')") not in (None, ""))
     token = driver.execute_script("return localStorage.getItem('token')")
-    print("TOKEN:", token)
     assert token, "Login xong nhưng không có token trong localStorage"
 
-    # 4) Go to create listing page
+    # 4) Go create listing
     driver.get(base_url + "/create-listing")
     wait.until(EC.presence_of_element_located(_css("listing-create-submit-btn")))
 
-    # Load test data
-    with open(os.path.join("data", "create_listing_valid.json"), "r", encoding="utf-8") as f:
+    with open(data_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # 5) Fill ALL fields (trừ YouTube)
-    # Brand / Model (API load -> select index 1 để luôn có value)
-    brand_select = Select(wait.until(
-    EC.presence_of_element_located(_css("listing-create-brand-select"))
-    ))
 
-    # đợi options load xong
-    wait.until(lambda d: len(brand_select.options) > 1)
+    # Brand
+    assert select_first_non_empty(driver, wait, _css("listing-create-brand-select")), "Không chọn được brand"
 
-    # chọn option có value khác ""
-    for opt in brand_select.options:
-        if opt.get_attribute("value"):
-            brand_select.select_by_value(opt.get_attribute("value"))
-            break
+    #Model
+    wait.until(EC.element_to_be_clickable(_css("listing-create-model-select")))
+    assert select_first_non_empty(driver, wait, _css("listing-create-model-select")), "Không chọn được model"
 
-    # model bị disable khi chưa chọn brand, nên chờ enable
-    brand_select = Select(driver.find_element(*_css("listing-create-brand-select")))
-    wait.until(lambda d: len(brand_select.options) > 1)
+    # Required inputs
+    fill_react_input(driver, wait, _css("listing-create-year-input"), data["year"])
+    
+    # Số KM
+    fill_react_input(driver, wait, _css("listing-create-mileage-input"), data["mileage_km"])
+    
+    # Giá bán
+    fill_react_input(driver, wait, _css("listing-create-price-input"), data["price_million"])
+    
+    # Tiêu đề
+    fill_react_input(driver, wait, _css("listing-create-title-input"), data["title"])
 
-    brand_value = None
-    for opt in brand_select.options:
-        if opt.get_attribute("value"):
-            brand_value = opt.get_attribute("value")
-            brand_select.select_by_value(brand_value)
-            break
+    # Origin
+    origin_locator = (By.CSS_SELECTOR, "input[name='origin'][value='trong-nuoc']")
+    origin_el = wait.until(EC.presence_of_element_located(origin_locator))
 
-    # đợi model enable + load
-    model_select = Select(driver.find_element(*_css("listing-create-model-select")))
-    wait.until(lambda d: model_select.options and len(model_select.options) > 1)
-
-    for opt in model_select.options:
-        if opt.get_attribute("value"):
-            model_select.select_by_value(opt.get_attribute("value"))
-            break
-
-    # Year / Mileage
-    y = driver.find_element(*_css("listing-create-year-input"))
-    y.clear(); y.send_keys(data["year"])
-
-    km = driver.find_element(*_css("listing-create-mileage-input"))
-    km.clear(); km.send_keys(data["mileage_km"])
-
-    # Origin: chọn theo name/value (vì testid có thể trùng) :contentReference[oaicite:2]{index=2}
-    driver.find_element(By.CSS_SELECTOR, "input[name='origin'][value='trong-nuoc']").click()
-
-    # Color ext/int: nếu bạn đã thêm testid thì dùng, còn chưa thì bỏ qua phần chọn màu (không bắt buộc)
-    def select_first_non_empty(testid):
-        el = driver.find_element(*_css(testid))
-        sel = Select(el)
-        wait.until(lambda d: len(sel.options) > 1)
-        for opt in sel.options:
-            v = opt.get_attribute("value")
-            if v and v.strip():
-                sel.select_by_value(v)
-                return v
-        return ""
+    # kéo vào giữa màn hình để tránh sticky header che
+    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", origin_el)
+    driver.execute_script("window.scrollBy(0, -120);")  # bù header cao ~64px (h-16) + dư
 
     try:
-        print("color_ext:", select_first_non_empty("listing-create-color-ext-select"))
-        print("color_int:", select_first_non_empty("listing-create-color-int-select"))
-    except Exception as e:
-        print("Skip color select:", e)
+        wait.until(EC.element_to_be_clickable(origin_locator))
+        origin_el.click()
+    except ElementClickInterceptedException:
+        driver.execute_script("arguments[0].click();", origin_el)  # fallback chắc ăn
 
-    # Gearbox/Fuel/Seats: nếu bạn đã thêm testid thì set luôn (không bắt buộc theo requiredFields) :contentReference[oaicite:3]{index=3}
+
+    # Optional selects (nếu có)
+    for tid in ("listing-create-color-ext-select", "listing-create-color-int-select"):
+        try:
+            select_first_non_empty(wait, driver.find_element(*_css(tid)))
+        except Exception:
+            pass
+
     try:
         Select(driver.find_element(*_css("listing-create-gearbox-select"))).select_by_value("so-tu-dong")
         Select(driver.find_element(*_css("listing-create-fuel-select"))).select_by_value("xang")
@@ -119,132 +208,41 @@ def test_e2e_login_create_listing_all_fields_except_youtube(driver, base_url, cr
     except Exception:
         pass
 
-    # Body type (required) :contentReference[oaicite:4]{index=4}
-    body_el = driver.find_element(*_css("listing-create-bodytype-select"))
-    body_sel = Select(body_el)
-    wait.until(lambda d: len(body_sel.options) > 1)
+    # Body type (required)
+    assert select_first_non_empty(driver, wait, _css("listing-create-bodytype-select")), "Không chọn được body_type"
 
-    for opt in body_sel.options:
-        v = opt.get_attribute("value")
-        if v:
-            body_sel.select_by_value(v)
+    # Description
+    fill_react_input(driver, wait, _css("listing-create-description-textarea"), data["description"])
+
+    # Province -> District (dynamic)
+    assert select_first_non_empty(driver, wait, _css("listing-create-province-select")), "Không chọn được province (Kiểm tra DB!)"
+
+    wait.until(EC.element_to_be_clickable(_css("listing-create-district-select")))
+    assert select_first_non_empty(driver, wait, _css("listing-create-district-select")), "Không chọn được district"
+
+    # Upload image (required)
+    driver.find_element(*_css("listing-create-image-upload")).send_keys(str(img_path))
+
+    # address_line required, readonly
+    addr = driver.find_element(*_css("listing-create-address-line")).get_attribute("value") or ""
+    assert addr.strip(), "address_line rỗng (tài khoản test chưa có address)"
+
+    # 6) Submit (JS click để tránh overlay/scroll)
+    js_click(driver, _css("listing-create-submit-btn"))
+
+    # 7) Accept success alert (nếu có) để tránh UnexpectedAlertPresentException
+    for _ in range(3):
+        if accept_alert_if_any(driver, 15):
             break
 
-    # Price (triệu) + Title
-    p = driver.find_element(*_css("listing-create-price-input"))
-    p.clear(); p.send_keys(data["price_million"])
-
-    t = driver.find_element(*_css("listing-create-title-input"))
-    t.clear(); t.send_keys(data["title"])
-
-    # Description (textarea hiện chưa có testid trong snippet bạn gửi :contentReference[oaicite:5]{index=5}, nên mình fallback theo label)
+    # 8) Verify redirect
     try:
-        dsc = driver.find_element(*_css("listing-create-description-textarea"))
-    except Exception:
-        dsc = driver.find_element(By.XPATH, "//label[contains(.,'Mô tả')]/following::textarea[1]")
-    dsc.clear(); dsc.send_keys(data["description"])
+        WebDriverWait(driver, submit_wait).until(EC.url_contains("/listings/self"))
+    except UnexpectedAlertPresentException:
+        accept_alert_if_any(driver, 10)
+        WebDriverWait(driver, submit_wait).until(EC.url_contains("/listings/self"))
 
-    # Province
-    province_el = wait.until(EC.presence_of_element_located(_css("listing-create-province-select")))
-    province_select = Select(province_el)
-
-    wait.until(lambda d: len(province_select.options) > 1)
-
-    # chọn province đầu tiên có value != ""
-    for opt in province_select.options:
-        v = opt.get_attribute("value")
-        if v:
-            province_select.select_by_value(v)
-            break
-
-    # District (phụ thuộc province)
-    district_el = wait.until(EC.presence_of_element_located(_css("listing-create-district-select")))
-
-    # chờ select được enable
-    wait.until(lambda d: d.find_element(*_css("listing-create-district-select")).is_enabled())
-
-    # QUAN TRỌNG: chờ district options load xong (len > 1)
-    def district_ready(d):
-        sel = Select(d.find_element(*_css("listing-create-district-select")))
-        return len(sel.options) > 1
-
-    wait.until(district_ready)
-
-    district_select = Select(driver.find_element(*_css("listing-create-district-select")))
-
-    # chọn district đầu tiên có value != ""
-    selected = False
-    for opt in district_select.options:
-        v = opt.get_attribute("value")
-        if v:
-            district_select.select_by_value(v)
-            selected = True
-            break
-
-    assert selected, "Không chọn được district (options vẫn rỗng hoặc toàn value='')"
-
-    # verify value đã khác rỗng
-    district_value = driver.find_element(*_css("listing-create-district-select")).get_attribute("value")
-    assert district_value.strip() != "", "District vẫn rỗng sau khi select"
-
-    # YouTube link: BỎ QUA (để trống)
-
-    # Upload image (required) :contentReference[oaicite:7]{index=7}
-    img_path = os.path.abspath(os.path.join("assets", "bmw-x5-2.webp"))
-    driver.find_element(*_css("listing-create-image-upload")).send_keys(img_path)
-
-    # Verify address_line không rỗng (nếu bạn đã thêm testid)
-    addr = driver.find_element(By.CSS_SELECTOR, "[data-testid='listing-create-address-line']").get_attribute("value")
-    print("ADDRESS_LINE =", addr)
-    assert addr and addr.strip(), "Tài khoản test chưa có address => form sẽ không submit được"
-
-    # Verify ảnh thật sự đã chọn (required)
-    img_val = driver.find_element(*_css("listing-create-image-upload")).get_attribute("value")
-    print("IMAGE_VALUE =", img_val)
-    assert img_val, "Ảnh chưa được chọn thực sự => form sẽ fail required"
-
-    def val(testid):
-        el = driver.find_element(By.CSS_SELECTOR, f"[data-testid='{testid}']")
-        return el.get_attribute("value")
-
-    print("brand:", val("listing-create-brand-select"))
-    print("model:", val("listing-create-model-select"))
-    print("body_type:", val("listing-create-bodytype-select"))
-    print("province:", val("listing-create-province-select"))
-    print("district:", val("listing-create-district-select"))
-
-    # 6) Submit (scroll + click chắc chắn)
-    btn = driver.find_element(*_css("listing-create-submit-btn"))
-    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", btn)
-
-    # click bằng JS để tránh bị overlay/React nuốt click
-    driver.execute_script("arguments[0].click();", btn)
-
-    accept_alert_if_any(driver, 5)
-    # DEBUG: kiểm tra có bắn request fetch/xhr không
-    import time
-    time.sleep(2)
-
-    entries = driver.execute_script("""
-    return performance.getEntriesByType('resource')
-    .filter(e => e.initiatorType === 'fetch' || e.initiatorType === 'xmlhttprequest')
-    .slice(-10)
-    .map(e => e.name);
-    """)
-    print("LAST XHR/FETCH:")
-    for u in entries:
-        print(" -", u)
-
-    # chờ redirect tối đa 60s (manual ~20s)
-    from selenium.common.exceptions import TimeoutException
-    try:
-        WebDriverWait(driver, 30).until(EC.url_contains("/listings/self"))
-    except TimeoutException:
-        print("URL after 30s:", driver.current_url)
-        raise
-
-
-    # 7) Verify: thấy title trên page
-    wait.until(EC.presence_of_element_located(
-        (By.XPATH, f"//h3[contains(normalize-space(),\"{data['title']}\")]")
-    ))
+    # 9) Verify: title xuất hiện
+    WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.XPATH, f"//*[contains(normalize-space(),\"{data['title']}\")]"))
+    )

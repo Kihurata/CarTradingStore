@@ -13,25 +13,6 @@ type ListingFormProps = {
   listingId?: string; // dùng khi edit
 };
 
-type FormState = {
-  title: string;
-  description: string;
-  year: string;
-  mileage_km: string;
-  price_vnd: string; // nhập theo triệu (vd: 450 = 450 triệu)
-  body_type: string;
-  gearbox: string;
-  fuel: string;
-  seats: string;
-  origin: string;
-  province_id: string;
-  district_id: string;
-  address_line: string;
-  color_ext: string;
-  color_int: string;
-  video_url: string;
-};
-
 
 export default function ListingForm({ mode, listingId }: ListingFormProps) {
   const router = useRouter();
@@ -336,12 +317,13 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
     const missingFields = requiredFields.filter(item => !item.field);
     if (missingFields.length > 0) {
       alert(`Vui lòng điền đầy đủ các trường bắt buộc:\n${missingFields.map(f => f.name).join('\n')}`);
-      setIsLoading(false);
       return;
     }
+
+    setIsLoading(true);
     setSubmitState("submitting");
     setSubmitError("");
-    setIsLoading(true);
+
 
     try {
       const formDataToSend = new FormData();
@@ -473,7 +455,6 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-[18px] font-semibold text-blue-600">THÔNG TIN XE</h2>
                   <button type="button" className="text-sm text-blue-600 hover:underline">
-                    Thu gọn &gt;
                   </button>
                 </div>
 
@@ -541,7 +522,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       data-testid="listing-create-year-input"
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^0-9]/g, '');
-                        setFormData({ ...formData, year: value });
+                        setFormData(prev => ({ ...prev, year: value }));
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
@@ -565,7 +546,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       data-testid="listing-create-mileage-input"
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^0-9]/g, '');
-                        setFormData({ ...formData, mileage_km: value });
+                        setFormData(prev => ({ ...prev, mileage_km: value }));
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
@@ -587,7 +568,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                               type="radio"
                               name="origin"
                               value="trong-nuoc"
-                              data-testid="listing-create-origin-input"
+                              data-testid="listing-create-origin-trong-nuoc"
                               checked={formData.origin === "trong-nuoc"}
                               onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                               className="w-4 h-4"
@@ -599,7 +580,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                               type="radio"
                               name="origin"
                               value="nhap-khau"
-                              data-testid="listing-create-origin-input"
+                              data-testid="listing-create-origin-nhap-khau"
                               checked={formData.origin === "nhap-khau"}
                               onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
                               className="w-4 h-4"
@@ -789,7 +770,6 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-[18px] font-semibold text-blue-600">GIÁ BÁN & MÔ TẢ XE</h2>
                   <button type="button" className="text-sm text-blue-600 hover:underline">
-                    Thu gọn &gt;
                   </button>
                 </div>
 
@@ -808,7 +788,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                         data-testid="listing-create-price-input"
                         onChange={(e) => {
                           const value = e.target.value.replace(/[^0-9]/g, '');
-                          setFormData({ ...formData, price_vnd: value });
+                          setFormData(prev => ({ ...prev, price_vnd: value }));
                         }}
                         className="
                           flex-1          
@@ -840,7 +820,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       placeholder="Ngắn gọn, dễ đọc, tô khéo quan trọng gây chú ý"
                       value={formData.title}
                       data-testid="listing-create-title-input"
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
                       required
                     />
@@ -858,7 +838,7 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                       placeholder="- Mô tả chi tiết về xe&#10;- Tình trạng sơ thẩm của xe&#10;- Tình trạng pháp lý của xe&#10;- Thông tin về bảo hiểm xe&#10;- Tình trạng giấy tờ..."
                       value={formData.description}
                       data-testid="listing-create-description-textarea"
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                       rows={8}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400 resize-none"
                       required
@@ -878,7 +858,6 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-[18px] font-semibold text-blue-600">THÔNG TIN NGƯỜI BÁN</h2>
                   <button type="button" className="text-sm text-blue-600 hover:underline">
-                    Thu gọn &gt;
                   </button>
                 </div>
 
@@ -1072,7 +1051,6 @@ export default function ListingForm({ mode, listingId }: ListingFormProps) {
                   <p>* Đăng ít nhất 03 hình và tối đa 25 hình nội đô ngoại thất xe</p>
                   <p>* Dung lượng mỗi hình tối đa 2048KB</p>
                   <p>* Hình ảnh phù hợp được hệ thống cho tăng tối ưu để bán xe nhanh hơn, tiếp cận khách hàng dễ dàng hơn</p>
-                  <p>* Vui lòng không trùng lặp tử có website</p>
                 </div>
 
                 {/* VIDEO */}
