@@ -25,7 +25,6 @@ jobs:
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
       E2E_DATA_FILE: "create_listing_valid.json"
-      NEXT_PUBLIC_API_URL: http://backend:4000
 
     steps:
       - name: Checkout Code
@@ -50,10 +49,8 @@ jobs:
       - name: Create Frontend .env
         run: |
           cd frontend
-          # Selenium (Browser) gọi vào /api -> Next.js Proxy -> Backend
-          echo "NEXT_PUBLIC_API_URL=/api" > .env
-          # Next.js Server gọi vào Backend qua mạng Docker
-          echo "INTERNAL_API_BASE=http://backend:4000" >> .env
+          echo "INTERNAL_API_BASE=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=/api" >> .env
 
       # 2. Khởi động Container
       - name: Start Containers
@@ -88,6 +85,10 @@ jobs:
           echo "🔄 Restarting Backend & Frontend to refresh data cache..."
           docker compose restart backend frontend
           sleep 15
+
+      - name: Verify INTERNAL_API_BASE exists
+        run: |
+          docker compose exec -T frontend sh -lc 'echo "INTERNAL_API_BASE=$INTERNAL_API_BASE"'
 
       # 6. Kiểm tra API thật sự có dữ liệu chưa (Không chỉ check 200 OK)
       - name: Verify Backend Data (Check Brands > 0)
