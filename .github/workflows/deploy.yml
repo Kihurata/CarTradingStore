@@ -6,7 +6,6 @@ on:
 permissions:
   contents: read
   issues: write
-
 jobs:
   # ------------------------------------------------------------------
   # JOB 1: BACKEND (Test Unit, Integration & Build Check)
@@ -91,18 +90,20 @@ jobs:
           docker build . -t frontend-test-build --build-arg NEXT_PUBLIC_API_URL=http://localhost:4000
 
   # ------------------------------------------------------------------
-  # JOB 3: SMOKE TEST (System Health Check) - ĐÃ TỐI ƯU ENV
+  # JOB 3: SMOKE TEST (System Health Check)
   # ------------------------------------------------------------------
   smoke-test:
+    # Chỉ chạy khi code đã build OK
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # TẠO TẤT CẢ BIẾN MÔI TRƯỜNG CHO DOCKER COMPOSE TẠI THƯ MỤC GỐC
-      - name: Create Root .env for Docker Compose
+      # 1. Tạo file .env cho Backend (SỬA LỖI ENV TẠI ĐÂY)
+      - name: Create Backend .env
         run: |
+          cd backend
           echo "PORT=4000" > .env
           echo "NODE_ENV=test" >> .env
           echo "DB_HOST=database" >> .env 
@@ -115,21 +116,29 @@ jobs:
           echo "SUPABASE_KEY=fake-key" >> .env
           echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
           echo "SUPABASE_ANON_KEY=fake-key" >> .env
-          # Fix lỗi NEXT_PUBLIC_API_URL undefined
-          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" >> .env
+          # --------------------------------------------------------------
 
+      # 2. Tạo file .env cho Frontend
+      - name: Create Frontend .env
+        run: |
+          cd frontend
+          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
+
+      # 3. Build và Chạy Docker Compose
       - name: Start Containers
         run: |
           docker compose up -d --build
           echo "Containers are starting..."
-          sleep 15
+          sleep 10 # Đợi một chút cho DB init xong
           docker compose ps
 
+      # 4. Chạy Script Smoke Test (Đường dẫn đã đúng)
       - name: Run Smoke Test Script
         run: |
           chmod +x backend/tests/smoke/run_smoke.sh
           ./backend/tests/smoke/run_smoke.sh
 
+      # 5. Debug log
       - name: Dump Docker Logs on Failure
         if: failure()
         run: |
@@ -145,7 +154,7 @@ jobs:
         if: always()
         run: docker compose down
 
-  # ------------------------------------------------------------------
+# ------------------------------------------------------------------
   # JOB 4: E2E Selenium (Login -> Create Listing -> Upload -> Submit) - ĐÃ SỬA CHUẨN
   # ------------------------------------------------------------------
   e2e-selenium:
@@ -168,7 +177,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # TẠO TẤT CẢ BIẾN MÔI TRƯỜNG CHO DOCKER COMPOSE TẠI ROOT (FIX LỖI NEXT_PUBLIC_API_URL)
       - name: Create Root .env for Docker Compose
         run: |
           echo "PORT=4000" > .env
@@ -192,7 +200,6 @@ jobs:
           sleep 10
           docker compose ps
 
-      # FORCE INIT DB & SEED DATA (FIX LỖI DROP-DOWN RỖNG)
       - name: Force Init DB & Seed Data
         run: |
           echo " Copying SQL files to container..."
@@ -274,6 +281,7 @@ jobs:
   # JOB 6: BÁO LỖI
   # ------------------------------------------------------------------
   report-failure:
+    # Thêm smoke-test vào danh sách needs
     needs: [backend-ci, frontend-ci, smoke-test, deploy-production]
     if: failure()
     runs-on: ubuntu-latest
