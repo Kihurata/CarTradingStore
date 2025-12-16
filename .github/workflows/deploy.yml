@@ -204,18 +204,27 @@ jobs:
           sleep 10
           docker compose ps
 
-      - name: Force Seed Data (Fix Empty Dropdown)
+      - name: Force Init DB & Seed Data
         run: |
-          echo "⏳ Copying seed file to container..."
+          echo " Copying SQL files to container..."
+          docker compose cp backend/config/init.sql database:/init.sql
           docker compose cp backend/config/seed.sql database:/seed.sql
 
-          echo "⏳ Executing seed script..."
-          # Chờ thêm 5s để đảm bảo PostgreSQL đã sẵn sàng nhận connection
+          echo " Waiting for Database to be ready..."
           sleep 5
-          # Chạy lệnh psql bên trong container database
+
+          echo " Executing INIT schema (Create Tables)..."
+          docker compose exec -T database psql -U postgres -d cartradingstore -f /init.sql
+
+          echo " Executing SEED data (Insert Data)..."
           docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
 
-          echo "✅ Seed data injected successfully!"
+          echo " VERIFY DATA (Debug Check):"
+          # Kiểm tra xem bảng brands đã có dữ liệu chưa
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
+          # Kiểm tra xem user seller đã có chưa
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT email FROM users WHERE email='seller@example.com';"
+      # ---------------------------------------------
 
       - name: Wait for Frontend
         run: |
