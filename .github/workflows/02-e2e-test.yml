@@ -31,7 +31,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Tái tạo môi trường Docker
+      # 1. Tạo Environment Variables
       - name: Create Backend .env
         run: |
           cd backend
@@ -50,45 +50,75 @@ jobs:
       - name: Create Frontend .env
         run: |
           cd frontend
-          echo "INTERNAL_API_BASE=http://backend:4000" > .env
-          echo "NEXT_PUBLIC_API_URL=/api" >> .env
+          # Selenium (Browser) gọi vào /api -> Next.js Proxy -> Backend
+          echo "NEXT_PUBLIC_API_URL=/api" > .env
+          # Next.js Server gọi vào Backend qua mạng Docker
+          echo "INTERNAL_API_BASE=http://backend:4000" >> .env
 
+      # 2. Khởi động Container
       - name: Start Containers
         run: |
           docker compose up -d --build
-          echo "🚀 Containers started. Waiting for DB initialization..."
+          echo "🚀 Containers started. Waiting for DB..."
           sleep 10
-          docker compose ps
 
-      - name: Wait for Backend Ready (inside Docker network)
-          run: |
-            for i in {1..40}; do
-              if docker compose exec -T frontend node -e "
-                const http=require('http');
-                const req=http.request({hostname:'backend',port:4000,path:'/api/listings/brands',method:'GET'},res=>{
-                  process.exit(res.statusCode===200?0:1);
-                });
-                req.on('error',()=>process.exit(1));
-                req.end();
-              "; then
-                echo "✅ Backend is reachable from frontend!"
-                exit 0
-              fi
-              echo "Waiting for backend... ($i)"
-              sleep 3
-            done
-            echo "❌ Backend not reachable in time"
-            docker compose logs --no-color --tail=200 backend
-            exit 1
-
-
-      - name: Seed Database for E2E
+      # 3. Chắc chắn DB đã sống trước khi Seed
+      - name: Wait for Database Ready
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          export PGPASSWORD=${{ secrets.DB_PASSWORD }}
-          psql -h localhost -p 5432 -U postgres -d cartradingstore -f backend/config/init.sql
-          psql -h localhost -p 5432 -U postgres -d cartradingstore -f backend/config/seed.sql
+          timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
 
+      # 4. QUAN TRỌNG: Seed dữ liệu sạch (Dùng docker exec cho tiện, không cần cài psql host)
+      - name: Reset & Seed Database
+        run: |
+          echo "📂 Copying SQL files..."
+          docker compose cp backend/config/seed.sql database:/seed.sql
+
+          echo "🧹 Cleaning & Seeding..."
+          # TRUNCATE để xóa sạch dữ liệu rác nếu có, tránh duplicate
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "TRUNCATE TABLE brands, provinces, districts, models, listings RESTART IDENTITY CASCADE;"
+          # Nạp dữ liệu
+          docker compose exec -T database psql -U postgres -d cartradingstore -f /seed.sql
+
+          # Verify ngay lập tức
+          docker compose exec -T database psql -U postgres -d cartradingstore -c "SELECT count(*) FROM brands;"
+
+      # 5. QUAN TRỌNG NHẤT: Restart để Backend nhận dữ liệu mới
+      - name: Restart Services
+        run: |
+          echo "🔄 Restarting Backend & Frontend to refresh data cache..."
+          docker compose restart backend frontend
+          sleep 15
+
+      # 6. Kiểm tra API thật sự có dữ liệu chưa (Không chỉ check 200 OK)
+      - name: Verify Backend Data (Check Brands > 0)
+        run: |
+          echo "🔍 Checking if Brands are loaded..."
+          # Script này check xem mảng trả về có độ dài > 0 không
+          docker compose exec -T frontend node -e '
+            const http = require("http");
+            const req = http.request({
+              hostname: "backend", port: 4000, path: "/api/listings/brands", method: "GET"
+            }, res => {
+              let data = "";
+              res.on("data", chunk => data += chunk);
+              res.on("end", () => {
+                const json = JSON.parse(data);
+                console.log("Response:", json);
+                // Kiểm tra xem có dữ liệu brands không
+                if (res.statusCode === 200 && json.data && json.data.length > 0) {
+                  console.log("✅ Brands loaded successfully!");
+                  process.exit(0);
+                } else {
+                  console.error("❌ API 200 OK but NO DATA!");
+                  process.exit(1);
+                }
+              });
+            });
+            req.on("error", (e) => { console.error(e); process.exit(1); });
+            req.end();
+          '
+
+      # 7. Setup & Run Test
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
