@@ -196,7 +196,7 @@ jobs:
       - name: Create Frontend .env
         run: |
           cd frontend
-          echo "NEXT_PUBLIC_API_URL=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=http://localhost:4000" > .env
 
       - name: Start Containers
         run: |
