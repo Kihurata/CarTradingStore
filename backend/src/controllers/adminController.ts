@@ -1,9 +1,18 @@
 import { Request, Response } from 'express';
-import { getAdminListings, updateListingStatus, updateListing, getListingReports, getAdminUsers, updateUserStatus } from '../services/adminService';
+import { getDashboardStats, getAdminListings, updateListingStatus, updateListing, getListingReports, getAdminUsers, updateUserStatus } from '../services/adminService';
 import { getStats as getStatsService } from '../services/statsService';
 import { generateStatsPDF } from '../utils/pdfGenerator';
 import pool from '../config/database';
 import { UserStatus } from '../models/user';
+
+export const getDashboard = async (req: Request, res: Response) => {
+  try {
+    const stats = await getDashboardStats();
+    res.json({ data: stats });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+};
 
 export const getListings = async (req: Request, res: Response) => {
   try {

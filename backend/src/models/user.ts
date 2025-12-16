@@ -17,6 +17,8 @@ export interface User {
   last_active_at?: Date;
   created_at: Date;
   updated_at: Date;
+  reset_password_token?: string | null;
+  reset_password_expires?: Date | null;
 }
 
 export const createUser = (userData: Partial<User>): User => ({

@@ -1,5 +1,11 @@
 // app/admin/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { formatPriceVND } from "@/lib/formatCurrency";
 import {
   CheckCircle,
   Clock,
@@ -9,13 +15,87 @@ import {
   PlusCircle,
   TrendingUp,
   ChevronRight,
+  Check,
+  X,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+interface DashboardStats {
+  pending_count: number;
+  approved_today: number;
+  new_users_today: number;
+  pending_reports: number;
+  recent_pending: {
+    id: string;
+    title: string;
+    price_vnd: number;
+    seller_name: string | null;
+    created_at: string;
+  }[];
+}
 
 export default function AdminHomePage() {
+  const router = useRouter();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api<{ data: DashboardStats }>(`/admin/dashboard`);
+        setStats(res.data);
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+const handleApprove = async (listingId: string) => {
+    setActionLoading(listingId);
+    try {
+      const res = await fetch(`/api/listings/${listingId}/approve`, { method: "POST" });
+      if (res.ok) {
+        setStats((prev) => {
+          if (!prev) return prev;
+          const currentApproved = Number(prev.approved_today) || 0;
+          return {
+            ...prev,
+            pending_count: Math.max(0, prev.pending_count - 1),
+            approved_today: currentApproved + 1,
+            recent_pending: prev.recent_pending.filter((l) => l.id !== listingId),
+          };
+        });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (listingId: string) => {
+    setActionLoading(listingId);
+    try {
+      const res = await fetch(`/api/listings/${listingId}/reject`, { method: "POST" });
+      if (res.ok) {
+        setStats((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pending_count: Math.max(0, prev.pending_count - 1),
+            recent_pending: prev.recent_pending.filter((l) => l.id !== listingId),
+          };
+        });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
-    <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
@@ -49,7 +129,7 @@ export default function AdminHomePage() {
         <CardKPI
           icon={<Clock className="w-5 h-5" />}
           title="Bài chờ duyệt"
-          value="—"
+          value={loading ? "..." : stats?.pending_count?.toString() || "0"}
           trend="+12% tuần này"
           tone="amber"
           href="/admin/listings?status=pending"
@@ -57,7 +137,7 @@ export default function AdminHomePage() {
         <CardKPI
           icon={<CheckCircle className="w-5 h-5" />}
           title="Đã duyệt (hôm nay)"
-          value="—"
+          value={loading ? "..." : stats?.approved_today?.toString() || "0"}
           trend="+4 so với hôm qua"
           tone="emerald"
           href="/admin/listings?status=approved"
@@ -65,7 +145,7 @@ export default function AdminHomePage() {
         <CardKPI
           icon={<Users className="w-5 h-5" />}
           title="Người dùng mới"
-          value="—"
+          value={loading ? "..." : stats?.new_users_today?.toString() || "0"}
           trend="Ổn định"
           tone="indigo"
           href="/admin/users"
@@ -73,7 +153,7 @@ export default function AdminHomePage() {
         <CardKPI
           icon={<AlertTriangle className="w-5 h-5" />}
           title="Báo cáo vi phạm"
-          value="—"
+          value={loading ? "..." : stats?.pending_reports?.toString() || "0"}
           trend="Cần xử lý"
           tone="rose"
           href="/admin/reports"
@@ -109,38 +189,80 @@ export default function AdminHomePage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">
-                      <div className="h-4 w-52 bg-gray-200 rounded animate-pulse" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button className="px-2 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700">
-                          Duyệt
-                        </button>
-                        <button className="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-700">
-                          Từ chối
-                        </button>
-                        <Link
-                          href="/admin/listings?status=pending"
-                          className="px-2 py-1 text-xs rounded border hover:bg-gray-50"
-                        >
-                          Chi tiết
-                        </Link>
-                      </div>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="hover:bg-gray-50">
+                      <td className="px-4 py-2">
+                        <div className="h-4 w-52 bg-gray-200 rounded animate-pulse" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button className="px-2 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700">
+                            Duyệt
+                          </button>
+                          <button className="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-700">
+                            Từ chối
+                          </button>
+                          <button className="px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-700">
+                            Chi tiết
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : stats?.recent_pending && stats.recent_pending.length > 0 ? (
+                  stats.recent_pending.map((listing) => (
+                    <tr key={listing.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium text-gray-900">{listing.title}</td>
+                      <td className="px-4 py-2 text-gray-700">{listing.seller_name || "—"}</td>
+                      <td className="px-4 py-2 text-gray-700">{formatPriceVND(listing.price_vnd)}</td>
+                      <td className="px-4 py-2 text-gray-600 text-sm">
+                        {new Date(listing.created_at).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => handleApprove(listing.id)}
+                            disabled={actionLoading === listing.id}
+                            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            <Check className="w-3 h-3" />
+                            Duyệt
+                          </button>
+                          <button
+                            onClick={() => handleReject(listing.id)}
+                            disabled={actionLoading === listing.id}
+                            className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+                          >
+                            <X className="w-3 h-3" />
+                            Từ chối
+                          </button>
+                          <Link
+                            href={`/admin/listings/${listing.id}`}
+                            className="px-2 py-1 text-xs rounded border hover:bg-gray-50 inline-block"
+                          >
+                            Chi tiết
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                      Không có bài chờ duyệt
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -193,7 +315,7 @@ export default function AdminHomePage() {
             </div>
 
             <div className="text-xs text-gray-500">
-              Gợi ý: Kết nối dữ liệu thật để thay “—” ở thẻ KPI & bảng pending.
+              ✅ Dữ liệu thực tế từ database
             </div>
           </div>
         </div>
@@ -202,50 +324,36 @@ export default function AdminHomePage() {
   );
 }
 
-/* ====== small, reusable KPI card ====== */
-function CardKPI({
-  icon,
-  title,
-  value,
-  trend,
-  tone = "gray",
-  href,
-}: {
+interface CardKPIProps {
   icon: React.ReactNode;
   title: string;
   value: string | number;
-  trend?: string;
-  tone?: "amber" | "emerald" | "indigo" | "rose" | "gray";
+  trend: string;
+  tone: "amber" | "emerald" | "indigo" | "rose";
   href?: string;
-}) {
-  const toneMap: Record<string, string> = {
-    amber: "bg-amber-50 text-amber-700 ring-amber-100",
-    emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    indigo: "bg-indigo-50 text-indigo-700 ring-indigo-100",
-    rose: "bg-rose-50 text-rose-700 ring-rose-100",
-    gray: "bg-gray-50 text-gray-700 ring-gray-100",
+}
+
+/* ====== small, reusable KPI card ====== */
+function CardKPI({ icon, title, value, trend, tone, href }: CardKPIProps) {
+  const toneClasses = {
+    amber: "bg-amber-50 text-amber-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+    indigo: "bg-indigo-50 text-indigo-700",
+    rose: "bg-rose-50 text-rose-700",
   };
 
-  const CardContent = (
-    <div className="rounded-xl border bg-white p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ring-8 ${toneMap[tone]}`}>
-            {icon}
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">{title}</div>
-            <div className="text-2xl font-bold text-gray-900">{value}</div>
-          </div>
+  const content = (
+    <div className={`rounded-xl border p-4 ${toneClasses[tone]}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium opacity-75">{title}</p>
+          <p className="text-3xl font-bold mt-1">{value}</p>
+          <p className="text-xs opacity-60 mt-1">{trend}</p>
         </div>
+        <div className="text-xl opacity-50">{icon}</div>
       </div>
-      {trend && <div className="mt-2 text-xs text-gray-500">{trend}</div>}
     </div>
   );
 
-  return href ? (
-    <Link href={href} className="block">{CardContent}</Link>
-  ) : (
-    CardContent
-  );
+  return href ? <Link href={href}>{content}</Link> : content;
 }

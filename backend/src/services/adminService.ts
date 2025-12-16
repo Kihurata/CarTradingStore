@@ -56,6 +56,36 @@ export async function getListingReports(listingId: string) {
   return rows;
 }
 
+export async function getDashboardStats() {
+  const query = `
+    SELECT
+      -- 1. Các số liệu thống kê (Scalar Subqueries - Luôn trả về kết quả)
+      (SELECT COUNT(*) FROM listings WHERE status = 'pending') AS pending_count,
+      (SELECT COUNT(*) FROM listings WHERE status = 'approved' AND DATE(created_at) = CURRENT_DATE) AS approved_today,
+      (SELECT COUNT(*) FROM users WHERE is_admin = false AND DATE(created_at) = CURRENT_DATE) AS new_users_today,
+      (SELECT COUNT(*) FROM reports WHERE status = 'new') AS pending_reports,
+      
+      -- 2. Danh sách bài chờ duyệt gần đây (Subquery riêng biệt)
+      (
+        SELECT COALESCE(json_agg(t), '[]'::json)
+        FROM (
+          SELECT 
+            l.id, 
+            l.title, 
+            l.price_vnd, 
+            u.name as seller_name, 
+            l.created_at
+          FROM listings l
+          LEFT JOIN users u ON l.seller_id = u.id
+          WHERE l.status = 'pending'
+          ORDER BY l.created_at DESC
+          LIMIT 5
+        ) t
+      ) AS recent_pending;
+  `;
+  const { rows } = await pool.query(query);
+  return rows[0];
+}
 export async function getAdminUsers(
   status: UserStatus | null = null,  // null = tất cả trạng thái
   page: number = 1,
