@@ -60,9 +60,27 @@ jobs:
           sleep 10
           docker compose ps
 
-      - name: Wait for Database Ready
-        run: |
-          timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
+      - name: Wait for Backend Ready (inside Docker network)
+          run: |
+            for i in {1..40}; do
+              if docker compose exec -T frontend node -e "
+                const http=require('http');
+                const req=http.request({hostname:'backend',port:4000,path:'/api/listings/brands',method:'GET'},res=>{
+                  process.exit(res.statusCode===200?0:1);
+                });
+                req.on('error',()=>process.exit(1));
+                req.end();
+              "; then
+                echo "✅ Backend is reachable from frontend!"
+                exit 0
+              fi
+              echo "Waiting for backend... ($i)"
+              sleep 3
+            done
+            echo "❌ Backend not reachable in time"
+            docker compose logs --no-color --tail=200 backend
+            exit 1
+
 
       - name: Seed Database for E2E
         run: |
