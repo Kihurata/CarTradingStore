@@ -190,10 +190,9 @@ jobs:
           echo "DB_PASSWORD=123456" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
-          echo "SUPABASE_URL=https://fake.supabase.co" >> .env
-          echo "SUPABASE_KEY=fake-key" >> .env
-          echo "SUPABASE_SERVICE_KEY=fake-key" >> .env
-          echo "SUPABASE_ANON_KEY=fake-key" >> .env
+          echo "SUPABASE_URL=https://ybhdhpmledyxuzdrrnzp.supabase.co" >> .env
+          echo "SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InliaGRocG1sZWR5eHV6ZHJybnpwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NTkwMSwiZXhwIjoyMDc1NTcxOTAxfQ.Wu-V_HfepG0n8aZMIKntbxSBn8XvZvQQUERlLIQKO2c" >> .env
+          echo "SUPABASE_BUCKET=cars" >> .env
 
       - name: Create Frontend .env
         run: |
