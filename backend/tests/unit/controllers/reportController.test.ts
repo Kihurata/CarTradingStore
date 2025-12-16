@@ -95,4 +95,26 @@ describe('ReportController', () => {
       expect(json).toHaveBeenCalled();
     });
   });
+
+  // describe('updateReportStatusController - INTENTIONAL FAIL', () => {
+  //   /*
+  //   [Description]: Kiểm tra API cập nhật trạng thái báo cáo với status không nằm trong danh sách cho phép.
+  //   [Pre-condition]: Admin đã đăng nhập.
+  //   [Data Test]: req.body = { status: 'DANG_XEM_XET' } (Tiếng Việt không hỗ trợ).
+  //   [Steps]: 
+  //     1. Mock reportService.updateReportStatus thành công.
+  //     2. Gọi hàm reportController.updateReportStatusController(req, res).
+  //   [Expected Result]: Response trả về status code 200 (nhưng thực tế Controller chặn 400).
+  //   */
+  //   it('should update report status with invalid enum string', async () => {
+  //     req.params = { reportId: '1' };
+  //     req.body = { status: 'DANG_XEM_XET' };
+  //     (reportService.updateReportStatus as jest.Mock).mockResolvedValue({});
+
+  //     await reportController.updateReportStatusController(req as Request, res as Response);
+
+  //     // Fail tại đây: Controller thực tế check enum và trả 400, nhưng ta expect 200
+  //     expect(status).toHaveBeenCalledWith(200);
+  //   });
+  // });
 });

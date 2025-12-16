@@ -227,4 +227,26 @@ describe('UserController', () => {
       expect(status).toHaveBeenCalledWith(500);
     });
   });
+
+  // describe('createUser - Boundary Testing (Password Length)', () => {
+  //   /*
+  //   [Description]: Kiểm tra xem API có trả về lỗi 400 (Bad Request) khi mật khẩu nằm ngay dưới giá trị biên tối thiểu (5 ký tự) hay không.
+  //   [Pre-condition]: Dữ liệu đầu vào các trường khác hợp lệ. Quy định mật khẩu tối thiểu 6 ký tự.
+  //   [Data Test]: req.body = { email: 'test_boundary@example.com', password_hash: '12345' } (Chuỗi 5 ký tự).
+  //   [Steps]: 
+  //     1. Mock userService.createUser giả lập thành công (để chứng minh nếu Controller không chặn thì Service sẽ được gọi và trả về 201).
+  //     2. Gọi hàm userController.createUser(req, res).
+  //   [Expected Result]: Response trả về status code 400.
+  //   */
+  //   it('should return 400 when password length is at lower boundary (5 chars)', async () => {
+  //     req.body = { 
+  //         email: 'test_boundary@example.com', 
+  //         password_hash: '12345' 
+  //     };
+
+  //     (userService.createUser as jest.Mock).mockResolvedValue({ id: 'new-id' });
+  //     await userController.createUser(req as Request, res as Response);
+  //     expect(status).toHaveBeenCalledWith(400); 
+  //   });
+  // });
 });

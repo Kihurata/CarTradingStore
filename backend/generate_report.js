@@ -60,16 +60,24 @@ const addBorders = (cell) => {
     };
 };
 
+// [UPDATE]: Đổi Theme Header
 const headerFill = {
     type: 'pattern',
     pattern: 'solid',
-    fgColor: { argb: 'FF4472C4' } // Màu xanh dương giống mẫu
+    fgColor: { argb: 'FFFFFFCC' } 
 };
 
 const headerFont = {
     name: 'Calibri',
-    color: { argb: 'FFFFFFFF' }, // Chữ trắng
+    color: { argb: 'FF000000' }, 
     bold: true,
+    size: 11
+};
+
+// Font cho Hyperlink
+const linkFont = {
+    name: 'Calibri',
+    color: { argb: 'FF000000' }, 
     size: 11
 };
 
@@ -107,14 +115,13 @@ async function generateExcel() {
     // --- Table Header ---
     const headerRowIdx = 7;
     const headerValues = ['', 'ID', 'Function', 'Sheet Name', 'Description', 'Pre-Condition'];
-    const headerRow = listSheet.getRow(headerRowIdx);
     
     // Gán giá trị và style cho header
     ['B', 'C', 'D', 'E', 'F'].forEach((col, index) => {
         const cell = listSheet.getCell(`${col}${headerRowIdx}`);
         cell.value = headerValues[index + 1];
-        cell.fill = headerFill;
-        cell.font = headerFont;
+        cell.fill = headerFill; // Áp dụng màu nền mới
+        cell.font = headerFont; // Áp dụng màu chữ mới
         cell.alignment = centerStyle;
         addBorders(cell);
     });
@@ -127,13 +134,13 @@ async function generateExcel() {
     for (const folder of TARGET_FOLDERS) {
         const folderPath = path.join(ROOT_TEST_DIR, folder);
         if (fs.existsSync(folderPath)) {
-            // Section Header (VD: CONTROLLER) - Màu xám
+            // Section Header (VD: CONTROLLER) - Màu xám nhạt để phân cách
             const sectionRow = listSheet.getRow(currentRowIdx);
             listSheet.mergeCells(`B${currentRowIdx}:F${currentRowIdx}`);
             const sectionCell = listSheet.getCell(`B${currentRowIdx}`);
             sectionCell.value = folder.toUpperCase();
             sectionCell.font = { bold: true };
-            sectionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } }; // Màu xám
+            sectionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }; // Xám rất nhạt
             sectionCell.alignment = { vertical: 'middle', horizontal: 'left' };
             // Border cho section
             ['B', 'C', 'D', 'E', 'F'].forEach(c => addBorders(listSheet.getCell(`${c}${currentRowIdx}`)));
@@ -148,19 +155,39 @@ async function generateExcel() {
                     const sheetName = `UC${String(globalId).padStart(2, '0')}`; // UC01, UC02...
                     
                     const row = listSheet.getRow(currentRowIdx);
+                    
+                    // Col B: ID
                     row.getCell(2).value = globalId;
+                    
+                    // Col C: Function Name
                     row.getCell(3).value = tc.functionName;
-                    row.getCell(4).value = sheetName;
+                    
+                    // Col D: Sheet Name (CÓ HYPERLINK)
+                    // Cú pháp: "#'Tên Sheet'!A1"
+                    row.getCell(4).value = {
+                        text: sheetName,
+                        hyperlink: `#'${sheetName}'!A1`, 
+                        tooltip: 'Click to go to details'
+                    };
+                    
+                    // Col E: Description
                     row.getCell(5).value = tc.description;
+                    
+                    // Col F: Pre-Condition
                     row.getCell(6).value = tc.preCondition;
 
                     // Style data row
                     row.getCell(2).alignment = centerStyle;
                     row.getCell(3).alignment = leftStyle;
+                    
+                    // Style cho ô Link
                     row.getCell(4).alignment = centerStyle;
+                    row.getCell(4).font = linkFont; // Font link màu xanh
+
                     row.getCell(5).alignment = leftStyle;
                     row.getCell(6).alignment = leftStyle;
 
+                    // Kẻ khung
                     ['B', 'C', 'D', 'E', 'F'].forEach(c => addBorders(row.getCell(c)));
 
                     tc.id = globalId;
@@ -209,24 +236,29 @@ async function generateExcel() {
         sheet.getCell('A4').value = 'Date Tested'; sheet.getCell('A4').font = { bold: true };
         sheet.mergeCells('B4:C4'); sheet.getCell('B4').value = new Date().toISOString().split('T')[0];
         sheet.mergeCells('E4:G4'); sheet.getCell('E4').value = 'Test Case (Pass/Fail)'; sheet.getCell('E4').font = { bold: true };
-        sheet.getCell('H4').value = 'Pass'; 
-        // Tô màu pass xanh lá nhạt cho đẹp (optional)
-        sheet.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
-        sheet.getCell('H4').font = { color: { argb: 'FF006100' } };
+        
+        // Status Pass/Fail
+        const statusCell = sheet.getCell('H4');
+        statusCell.value = 'Pass'; 
+        // Tô màu pass xanh lá nhạt cho đẹp
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+        statusCell.font = { color: { argb: 'FF006100' } };
 
         // Kẻ khung Info Block
         ['A1', 'B1', 'D1', 'E1', 'A2', 'B2', 'D2', 'E2', 'G2', 'H2', 'A4', 'B4', 'E4', 'H4'].forEach(addr => {
-             // Logic border đơn giản: với ô merged, chỉ cần set ô đầu
              addBorders(sheet.getCell(addr));
         });
 
+        // --- BACK LINK ---
+        sheet.getCell('A10').value = { text: '← Back to List', hyperlink: "#'Unit Test Case List'!A1" };
+        sheet.getCell('A10').font = linkFont;
 
         // --- DATA TEST BLOCK ---
         const dataHeaderRow = 6;
         sheet.getCell(`A${dataHeaderRow}`).value = 'ID';
         sheet.mergeCells(`B${dataHeaderRow}:H${dataHeaderRow}`); sheet.getCell(`B${dataHeaderRow}`).value = 'Data Test';
         
-        // Style Header Data
+        // Style Header Data (THEME MỚI)
         sheet.getCell(`A${dataHeaderRow}`).fill = headerFill; sheet.getCell(`A${dataHeaderRow}`).font = headerFont;
         sheet.getCell(`B${dataHeaderRow}`).fill = headerFill; sheet.getCell(`B${dataHeaderRow}`).font = headerFont;
         addBorders(sheet.getCell(`A${dataHeaderRow}`)); addBorders(sheet.getCell(`B${dataHeaderRow}`));
@@ -257,7 +289,7 @@ async function generateExcel() {
         sheet.getCell(`G${stepHeadRow}`).value = 'Actual Results';
         sheet.getCell(`H${stepHeadRow}`).value = 'Status';
 
-        // Style Header Steps
+        // Style Header Steps (THEME MỚI)
         ['A', 'B', 'E', 'G', 'H'].forEach(c => {
             const cell = sheet.getCell(`${c}${stepHeadRow}`);
             cell.fill = headerFill;

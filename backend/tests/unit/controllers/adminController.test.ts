@@ -175,4 +175,27 @@ describe('AdminController', () => {
       expect(json).toHaveBeenCalled();
     });
   });
+
+  // describe('getListings - INTENTIONAL FAIL', () => {
+  //   /*
+  //   [Description]: Kiểm tra API lấy danh sách với số trang là số âm (giá trị biên không hợp lệ).
+  //   [Pre-condition]: Admin đã đăng nhập.
+  //   [Data Test]: req.query = { page: '-5', limit: '10' }
+  //   [Steps]: 
+  //     1. Mock adminService.getAdminListings trả về mảng [].
+  //     2. Gọi hàm adminController.getListings(req, res).
+  //   [Expected Result]: Response trả về status code 200 (nhưng thực tế logic phân trang sẽ lỗi).
+  //   */
+  //   it('should return listings when page is negative', async () => {
+  //     req.query = { page: '-5', limit: '10', status: 'pending' };
+      
+  //     // Giả lập service ném lỗi thực tế khi nhận offset âm
+  //     (adminService.getAdminListings as jest.Mock).mockRejectedValue(new Error('Invalid OFFSET'));
+
+  //     await adminController.getListings(req as Request, res as Response);
+
+  //     // Fail tại đây: Code thực tế trả 500/400, nhưng ta expect 200
+  //     expect(status).toHaveBeenCalledWith(200);
+  //   });
+  // });
 });
