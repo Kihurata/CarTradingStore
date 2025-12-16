@@ -199,7 +199,8 @@ jobs:
         run: |
           cd frontend
           # [QUAN TRỌNG] Ghi đè file .env này cho chắc chắn
-          echo "NEXT_PUBLIC_API_URL=http://backend:4000" > .env
+          echo "API_URL=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=http://backend:4000" >> .env
 
       - name: Start Containers
         run: |
