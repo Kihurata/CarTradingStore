@@ -187,7 +187,7 @@ jobs:
           echo "DB_HOST=database" >> .env
           echo "DB_PORT=5432" >> .env
           echo "DB_USER=postgres" >> .env
-          echo "DB_PASSWORD=password123" >> .env
+          echo "DB_PASSWORD=123456" >> .env
           echo "DB_NAME=cartradingstore" >> .env
           echo "JWT_SECRET=ci_smoke_test_secret" >> .env
           echo "SUPABASE_URL=https://fake.supabase.co" >> .env
