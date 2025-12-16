@@ -199,8 +199,8 @@ jobs:
         run: |
           cd frontend
           # [QUAN TRỌNG] Ghi đè file .env này cho chắc chắn
-          echo "API_URL=http://backend:4000" > .env
-          echo "NEXT_PUBLIC_API_URL=http://backend:4000" >> .env
+          echo "INTERNAL_API_BASE=http://backend:4000" > .env
+          echo "NEXT_PUBLIC_API_URL=/api" >> .env
 
       - name: Start Containers
         run: |
@@ -241,18 +241,25 @@ jobs:
           # Kiểm tra xem Frontend đã nhận đúng URL chưa
           docker compose exec -T frontend env | grep NEXT_PUBLIC_API_URL || echo "❌ VAR MISSING IN FRONTEND!"
 
-      - name: Wait for Frontend & Backend Ready
+      - name: Wait for Backend Ready (inside Docker network)
         run: |
-          for i in {1..30}; do
-            if curl -fsS http://localhost:3000 >/dev/null; then
-              echo "✅ Frontend is up!"
+          for i in {1..40}; do
+            if docker compose exec -T frontend node -e "
+              const http=require('http');
+              const req=http.request({hostname:'backend',port:4000,path:'/api/listings/brands',method:'GET'},res=>{
+                process.exit(res.statusCode===200?0:1);
+              });
+              req.on('error',()=>process.exit(1));
+              req.end();
+            "; then
+              echo "✅ Backend is reachable from frontend!"
               exit 0
             fi
-            echo "Waiting for frontend..."
-            sleep 2
+            echo "Waiting for backend... ($i)"
+            sleep 3
           done
-          echo "❌ Frontend failed to start in time"
-          docker compose logs frontend
+          echo "❌ Backend not reachable in time"
+          docker compose logs --no-color --tail=200 backend
           exit 1
 
       - name: Debug API Connectivity (Using Node.js)
