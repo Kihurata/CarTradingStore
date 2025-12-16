@@ -20,7 +20,7 @@ jobs:
       TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       HEADLESS: "1"
       ARTIFACTS_DIR: artifacts
-      E2E_WAIT: "25"
+      E2E_WAIT: "60"
       E2E_ALERT_WAIT: "40"
       E2E_SUBMIT_WAIT: "150"
       E2E_IMAGE_FILE: "bmw-x5-2.webp"
@@ -31,7 +31,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Tái tạo môi trường Docker (Cần thiết vì đây là máy ảo mới)
+      # Tái tạo môi trường Docker
       - name: Create Backend .env
         run: |
           cd backend
@@ -56,12 +56,20 @@ jobs:
       - name: Start Containers
         run: |
           docker compose up -d --build
+          echo "🚀 Containers started. Waiting for DB initialization..."
           sleep 10
           docker compose ps
 
       - name: Wait for Database Ready
         run: |
           timeout 60s bash -c 'until docker compose exec -T database pg_isready; do echo "Waiting for DB..."; sleep 2; done'
+
+      - name: Seed Database for E2E
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          export PGPASSWORD=${{ secrets.DB_PASSWORD }}
+          psql -h localhost -p 5432 -U postgres -d cartradingstore -f backend/config/init.sql
+          psql -h localhost -p 5432 -U postgres -d cartradingstore -f backend/config/seed.sql
 
       - name: Set up Python
         uses: actions/setup-python@v5
