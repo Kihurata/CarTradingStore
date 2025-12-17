@@ -28,7 +28,6 @@ export function UserNavbar() {
     <BaseNavbar
       links={[
         { href: "/listings", label: "Ô TÔ CŨ" },
-        { href: "/news", label: "TIN TỨC" },
       ]}
       rightButtons={
         <>
