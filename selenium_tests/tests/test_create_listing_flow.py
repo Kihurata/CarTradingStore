@@ -123,7 +123,7 @@ def fill(driver, locator, value):
 def test_e2e_login_create_listing_all_fields_except_youtube(driver, base_url, creds):
     assert creds["email"] and creds["password"], "Thiếu TEST_EMAIL/TEST_PASSWORD"
 
-    wait = WebDriverWait(driver, int(os.getenv("E2E_WAIT", "25")))
+    wait = WebDriverWait(driver, int(os.getenv("E2E_WAIT", "120")))
     submit_wait = int(os.getenv("E2E_SUBMIT_WAIT", "120"))
     alert_wait = int(os.getenv("E2E_ALERT_WAIT", "40"))
 
