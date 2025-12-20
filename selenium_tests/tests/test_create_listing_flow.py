@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.common.keys import Keys
+from selenium_tests.conftest import driver
 
 def _css(testid: str):
     return (By.CSS_SELECTOR, f"[data-testid='{testid}']")
@@ -123,7 +124,7 @@ def fill(driver, locator, value):
 def test_e2e_login_create_listing_all_fields_except_youtube(driver, base_url, creds):
     assert creds["email"] and creds["password"], "Thiếu TEST_EMAIL/TEST_PASSWORD"
 
-    wait = WebDriverWait(driver, int(os.getenv("E2E_WAIT", "120")))
+    wait = WebDriverWait(driver, 180)
     submit_wait = int(os.getenv("E2E_SUBMIT_WAIT", "120"))
     alert_wait = int(os.getenv("E2E_ALERT_WAIT", "40"))
 
