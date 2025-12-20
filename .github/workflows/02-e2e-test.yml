@@ -56,7 +56,7 @@ jobs:
       - name: Start Containers
         run: |
           docker compose up -d --build
-          echo "🚀 Containers started. Waiting for DBase..."
+          echo " Containers started. Waiting for DBase..."
           sleep 10
 
       # 3. Chắc chắn DB đã sống trước khi Seed
